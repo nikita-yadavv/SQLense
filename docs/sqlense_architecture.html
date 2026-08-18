@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>SQLense — System Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset ─────────────────────────────────────── */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: Inter, sans-serif;
+      background: linear-gradient(160deg, #5dbfb2 0%, #7ed4c7 60%, #6ac0b4 100%);
+      min-height: 100vh;
+      padding: 48px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 56px;
+    }
+
+    /* ── Page header ───────────────────────────────── */
+    .page-header {
+      text-align: center;
+      color: #fff;
+    }
+
+    .page-header h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .page-header h1 em {
+      color: #f9d84e;
+      font-style: normal;
+    }
+
+    .page-header p {
+      font-size: 14px;
+      margin-top: 6px;
+      opacity: 0.8;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Shared slide canvas ────────────────────────── */
+    .slide {
+      width: 1120px;
+      background: rgba(255, 255, 255, 0.13);
+      border-radius: 28px;
+      padding: 44px 52px 48px;
+      border: 2.5px solid rgba(255, 255, 255, 0.38);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.10);
+    }
+
+    .slide-title {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 6px;
+    }
+
+    .slide-heading {
+      text-align: center;
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 36px;
+      letter-spacing: -0.2px;
+    }
+
+    .slide-heading em {
+      color: #f9d84e;
+      font-style: normal;
+    }
+
+    /* ══════════════════════════════════════════════════
+   SHARED PRIMITIVES
+══════════════════════════════════════════════════ */
+
+    /* Generic big layer block */
+    .layer-block {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px 28px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.09);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .layer-block .lb-icon {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .layer-block .lb-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #1a1a2e;
+      line-height: 1.2;
+    }
+
+    .layer-block .lb-sub {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    /* Colour stripe on left */
+    .layer-block::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      border-radius: 18px 0 0 18px;
+    }
+
+    .stripe-purple::before {
+      background: linear-gradient(180deg, #7B63C8, #9b7de8);
+    }
+
+    .stripe-blue::before {
+      background: linear-gradient(180deg, #2d7dd2, #5aa0f0);
+    }
+
+    .stripe-indigo::before {
+      background: linear-gradient(180deg, #5c4db5, #7b68e0);
+    }
+
+    .stripe-amber::before {
+      background: linear-gradient(180deg, #d97706, #f59e0b);
+    }
+
+    .stripe-pink::before {
+      background: linear-gradient(180deg, #be185d, #e4518a);
+    }
+
+    .stripe-teal::before {
+      background: linear-gradient(180deg, #0f766e, #14b8a6);
+    }
+
+    .stripe-navy::before {
+      background: linear-gradient(180deg, #1e40af, #3b82f6);
+    }
+
+    .stripe-green::before {
+      background: linear-gradient(180deg, #166534, #22c55e);
+    }
+
+    /* Down arrow between layers */
+    .arr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      margin: 0 auto;
+      width: fit-content;
+    }
+
+    .arr .line {
+      width: 2px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .arr .tip {
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-top: 10px solid rgba(255, 255, 255, 0.55);
+    }
+
+    .arr .lbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin: 3px 0;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    /* Feature pill */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .pill-purple {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .pill-blue {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .pill-amber {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .pill-pink {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    .pill-teal {
+      background: #ccfbf1;
+      color: #115e59;
+    }
+
+    .pill-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .pill-red {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Tag (small code-style label) */
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      background: #f1f5f9;
+      color: #334155;
+      border-radius: 6px;
+      padding: 3px 10px;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* ══════════════════════════════════════════════════
+   DIAGRAM 1 — LAYERED ARCHITECTURE
+══════════════════════════════════════════════════ */
+    .layers {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ══════════════════════════════════════════════════
+   DIAGRAM 2 — SYSTEM ARCHITECTURE (two-DB focus)
+══════════════════════════════════════════════════ */
+    .sys-arch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+    }
+
+    .sys-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .sys-block {
+      flex: 1;
+      background: #fff;
+      border-radius: 18px;
+      padding: 18px 22px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.09);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .sys-block .sb-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .sys-block .sb-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 6px;
+    }
+
+    .sys-block .sb-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .sys-block::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      border-radius: 18px 18px 0 0;
+    }
+
+    .sb-purple::before {
+      background: linear-gradient(90deg, #7B63C8, #9b7de8);
+    }
+
+    .sb-blue::before {
+      background: linear-gradient(90deg, #2d7dd2, #5aa0f0);
+    }
+
+    .sb-amber::before {
+      background: linear-gradient(90deg, #d97706, #f59e0b);
+    }
+
+    .sb-pink::before {
+      background: linear-gradient(90deg, #be185d, #e4518a);
+    }
+
+    .sb-teal::before {
+      background: linear-gradient(90deg, #0f766e, #14b8a6);
+    }
+
+    .sb-green::before {
+      background: linear-gradient(90deg, #166534, #22c55e);
+    }
+
+    .sb-navy::before {
+      background: linear-gradient(90deg, #1e40af, #3b82f6);
+    }
+
+    .sb-red::before {
+      background: linear-gradient(90deg, #9b1c1c, #ef4444);
+    }
+
+    /* DB highlight boxes */
+    .db-row {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .db-box {
+      flex: 1;
+      border-radius: 18px;
+      padding: 22px 24px;
+      text-align: center;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+    }
+
+    .db-box .db-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .db-box .db-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .db-box .db-note {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      opacity: 0.75;
+    }
+
+    .db-box .db-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .db-platform {
+      background: linear-gradient(135deg, #2d7dd2, #4a9af5);
+      color: #fff;
+    }
+
+    .db-org {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      color: #fff;
+    }
+
+    .db-platform .pill-item {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .db-org .pill-item {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    /* Privacy callout */
+    .privacy-bar {
+      background: linear-gradient(135deg, #7B63C8, #9b7de8);
+      border-radius: 14px;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      margin-top: 0;
+    }
+
+    .privacy-bar span {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    /* ══════════════════════════════════════════════════
+   DIAGRAM 3 — AI WORKFLOW
+══════════════════════════════════════════════════ */
+    .ai-flow {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .ai-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      max-width: 140px;
+    }
+
+    .ai-node {
+      width: 100%;
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px 10px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+      position: relative;
+    }
+
+    .ai-node .an-icon {
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+
+    .ai-node .an-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #1a1a2e;
+      line-height: 1.3;
+    }
+
+    .ai-node .an-sub {
+      font-size: 10px;
+      color: #777;
+      margin-top: 3px;
+      font-weight: 400;
+    }
+
+    .ai-node::before {
+      content: '';
+      height: 4px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      border-radius: 14px 14px 0 0;
+    }
+
+    .an-1::before {
+      background: #7B63C8;
+    }
+
+    .an-2::before {
+      background: #2d7dd2;
+    }
+
+    .an-3::before {
+      background: #d97706;
+    }
+
+    .an-4::before {
+      background: #be185d;
+    }
+
+    .an-5::before {
+      background: #0f766e;
+    }
+
+    .an-6::before {
+      background: #166534;
+    }
+
+    .an-7::before {
+      background: #5c4db5;
+    }
+
+    .an-8::before {
+      background: #14b8a6;
+    }
+
+    .ai-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      flex-shrink: 0;
+      padding-top: 42px;
+      /* align with center of node */
+    }
+
+    .ai-arrow span {
+      font-size: 20px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* ══════════════════════════════════════════════════
+   DIAGRAM 4 — MVC MAPPING
+══════════════════════════════════════════════════ */
+    .mvc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+    }
+
+    .mvc-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mvc-header {
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .mvc-header .mh-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .mvc-header .mh-title {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .mvc-header .mh-sub {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+
+    .mh-view {
+      background: linear-gradient(135deg, #7B63C8, #9b7de8);
+    }
+
+    .mh-ctrl {
+      background: linear-gradient(135deg, #2d7dd2, #4a9af5);
+    }
+
+    .mh-model {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+    }
+
+    .mvc-item {
+      background: #fff;
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mvc-item .mi-icon {
+      font-size: 22px;
+    }
+
+    .mvc-item .mi-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1a1a2e;
+    }
+
+    .mvc-item .mi-sub {
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    /* Role cards */
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .role-card {
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
+    }
+
+    .role-card.admin {
+      background: linear-gradient(135deg, #7B63C8, #9b7de8);
+    }
+
+    .role-card.employee {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+    }
+
+    .role-card .rc-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .role-card ul li {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 5px 10px;
+    }
+
+    /* Feature highlight grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 28px;
+      width: 100%;
+    }
+
+    .feature-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+
+    .feature-card .fc-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .feature-card .fc-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+
+    .feature-card .fc-sub {
+      font-size: 11px;
+      color: #555;
+      font-weight: 500;
+      line-height: 1.6;
+    }
+
+    /* ── Divider line between slides ─────────────────── */
+    .divider {
+      width: 1120px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page-header">
+    <h1>SQLense — <em>System Architecture</em></h1>
+    <p>MCA Final Year Project · Architecture Diagrams · For Guide &amp; Presentation</p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+     DIAGRAM 1 — LAYERED ARCHITECTURE
+══════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-title">Diagram 1</div>
+    <div class="slide-heading">Layered <em>Architecture</em></div>
+
+    <div class="layers">
+
+      <div class="layer-block stripe-purple">
+        <div class="lb-icon">🖥️</div>
+        <div class="lb-title">Presentation Layer</div>
+        <div class="lb-sub">React Frontend — Chat Interface · Admin Dashboard · Query History · Charts</div>
+      </div>
+
+      <div class="arr">
+        <div class="line"></div>
+        <div class="lbl">HTTP / REST API</div>
+        <div class="tip"></div>
+      </div>
+
+      <div class="layer-block stripe-blue">
+        <div class="lb-icon">⚡</div>
+        <div class="lb-title">API Layer</div>
+        <div class="lb-sub">FastAPI Backend — Routes all requests · Enforces CORS · Validates input &amp; output</div>
+      </div>
+
+      <div class="arr">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <div class="layer-block stripe-indigo">
+        <div class="lb-icon">🔒</div>
+        <div class="lb-title">Authentication &amp; Authorization</div>
+        <div class="lb-sub">JWT Token Verification · Role-Based Access Control · Password Hashing · Credential
+          Encryption</div>
+      </div>
+
+      <div class="arr">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <div class="layer-block stripe-amber">
+        <div class="lb-icon">⚙️</div>
+        <div class="lb-title">Business Logic Layer</div>
+        <div class="lb-sub">Admin Management · Employee Management · Database Configuration · Query History · SQL
+          Workspace</div>
+      </div>
+
+      <div class="arr">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <div class="layer-block stripe-pink">
+        <div class="lb-icon">🤖</div>
+        <div class="lb-title">AI Analytics Engine</div>
+        <div class="lb-sub">LangGraph Pipeline · Ollama (Qwen3:8b) · Natural Language → SQL → Insights → Visualizations
+        </div>
+      </div>
+
+      <div class="arr">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <div class="layer-block stripe-teal">
+        <div class="lb-icon">🗄️</div>
+        <div class="lb-title">Data Layer</div>
+        <div class="lb-sub">SQLAlchemy ORM · Platform Database (Users &amp; Config) · Organisation Database (Business
+          Data)</div>
+      </div>
+
+      <div class="arr">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <div class="layer-block stripe-navy">
+        <div class="lb-icon">🐘</div>
+        <div class="lb-title">Database Layer</div>
+        <div class="lb-sub">PostgreSQL · Two isolated instances · Data is never mixed or shared across organisations
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+     DIAGRAM 2 — SYSTEM ARCHITECTURE
+══════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-title">Diagram 2</div>
+    <div class="slide-heading">System <em>Architecture</em></div>
+
+    <div class="sys-arch">
+
+      <!-- Row 1: Frontend -->
+      <div class="sys-block sb-purple" style="max-width:480px;width:100%;">
+        <div class="sb-icon">🖥️</div>
+        <div class="sb-title">React Frontend</div>
+        <div class="sb-pills">
+          <span class="pill pill-purple">Chat Interface</span>
+          <span class="pill pill-purple">Admin Panel</span>
+          <span class="pill pill-purple">Dashboard</span>
+          <span class="pill pill-purple">Query History</span>
+        </div>
+      </div>
+
+      <div class="arr" style="margin:0 auto;">
+        <div class="line"></div>
+        <div class="lbl">HTTPS Request</div>
+        <div class="tip"></div>
+      </div>
+
+      <!-- Row 2: FastAPI -->
+      <div class="sys-block sb-blue" style="max-width:480px;width:100%;">
+        <div class="sb-icon">⚡</div>
+        <div class="sb-title">FastAPI Backend</div>
+        <div class="sb-pills">
+          <span class="pill pill-blue">REST API</span>
+          <span class="pill pill-blue">CORS</span>
+          <span class="pill pill-blue">Input Validation</span>
+        </div>
+      </div>
+
+      <div class="arr" style="margin:0 auto;">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <!-- Row 3: Auth + Two modules -->
+      <div class="sys-row">
+        <div class="sys-block sb-indigo" style="max-width:200px;">
+          <div class="sb-icon">🔒</div>
+          <div class="sb-title">Authentication</div>
+          <div class="sb-pills">
+            <span class="pill pill-purple" style="font-size:10px;">JWT</span>
+            <span class="pill pill-purple" style="font-size:10px;">Role Check</span>
+            <span class="pill pill-purple" style="font-size:10px;">Encryption</span>
+          </div>
+        </div>
+        <div class="sys-block sb-amber" style="flex:1;">
+          <div class="sb-icon">🧑‍💼</div>
+          <div class="sb-title">Admin Module</div>
+          <div class="sb-pills">
+            <span class="pill pill-amber">Configure Database</span>
+            <span class="pill pill-amber">Manage Employees</span>
+            <span class="pill pill-amber">SQL Workspace</span>
+            <span class="pill pill-amber">Commit / Rollback</span>
+          </div>
+        </div>
+        <div class="sys-block sb-teal" style="flex:1;">
+          <div class="sb-icon">👤</div>
+          <div class="sb-title">Employee Module</div>
+          <div class="sb-pills">
+            <span class="pill pill-teal">Ask Business Questions</span>
+            <span class="pill pill-teal">View Charts &amp; Insights</span>
+            <span class="pill pill-teal">Read-Only Access</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arr" style="margin:0 auto;">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <!-- Row 4: AI Engine -->
+      <div class="sys-block sb-pink" style="max-width:520px;width:100%;">
+        <div class="sb-icon">🤖</div>
+        <div class="sb-title">AI Analytics Engine</div>
+        <div class="sb-pills">
+          <span class="pill pill-pink">LangGraph</span>
+          <span class="pill pill-pink">Ollama · Qwen3:8b</span>
+          <span class="pill pill-pink">NL → SQL</span>
+          <span class="pill pill-pink">Insights</span>
+          <span class="pill pill-pink">Visualizations</span>
+        </div>
+      </div>
+
+      <div class="arr" style="margin:0 auto;">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+
+      <!-- Row 5: Two databases -->
+      <div class="db-row">
+        <div class="db-box db-platform">
+          <div class="db-icon">🗃️</div>
+          <div class="db-title">Platform Database</div>
+          <div class="db-note">Managed by SQLense</div>
+          <div class="db-pills">
+            <span class="pill-item">Users &amp; Roles</span>
+            <span class="pill-item">Organisation Config</span>
+            <span class="pill-item">Encrypted Credentials</span>
+            <span class="pill-item">Query History</span>
+          </div>
+        </div>
+        <div class="db-box db-org">
+          <div class="db-icon">🏢</div>
+          <div class="db-title">Organisation Database</div>
+          <div class="db-note">Owned by the company</div>
+          <div class="db-pills">
+            <span class="pill-item">Sales · HR · Finance Data</span>
+            <span class="pill-item">Any Business Tables</span>
+            <span class="pill-item">Read-Only via AI Chat</span>
+            <span class="pill-item">Full Access — Admin Only</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privacy callout -->
+      <div class="arr" style="margin:0 auto;">
+        <div class="line"></div>
+        <div class="tip"></div>
+      </div>
+      <div class="privacy-bar">
+        <span>🔐</span>
+        <span><strong>Privacy-First Architecture</strong> — Company business data never leaves the organisation's own
+          database.<br>SQLense only stores credentials (encrypted with Fernet) and query history — never the actual
+          business data.</span>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+     DIAGRAM 3 — AI WORKFLOW
+══════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-title">Diagram 3</div>
+    <div class="slide-heading">AI Analytics <em>Workflow</em></div>
+
+    <div class="ai-flow">
+
+      <div class="ai-col">
+        <div class="ai-node an-1">
+          <div class="an-icon">💬</div>
+          <div class="an-title">Business Question</div>
+          <div class="an-sub">User types in plain English</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-2">
+          <div class="an-icon">🔍</div>
+          <div class="an-title">Schema Understanding</div>
+          <div class="an-sub">Reads database structure</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-3">
+          <div class="an-icon">✍️</div>
+          <div class="an-title">SQL Generation</div>
+          <div class="an-sub">LLM converts NL to SQL</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-4">
+          <div class="an-icon">🛡️</div>
+          <div class="an-title">SQL Validation</div>
+          <div class="an-sub">SELECT-only enforced</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-5">
+          <div class="an-icon">▶️</div>
+          <div class="an-title">Execute Query</div>
+          <div class="an-sub">Runs on org database</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-6">
+          <div class="an-icon">💡</div>
+          <div class="an-title">Generate Insights</div>
+          <div class="an-sub">LLM writes business summary</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-7">
+          <div class="an-icon">📊</div>
+          <div class="an-title">Visualization</div>
+          <div class="an-sub">Chart type selected</div>
+        </div>
+      </div>
+      <div class="ai-arrow"><span>→</span></div>
+
+      <div class="ai-col">
+        <div class="ai-node an-8">
+          <div class="an-icon">📋</div>
+          <div class="an-title">Response</div>
+          <div class="an-sub">Results returned to user</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Engine badge -->
+    <div style="text-align:center;margin-top:24px;">
+      <span
+        style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:1px;text-transform:uppercase;">Powered
+        by</span>
+      &nbsp;
+      <span class="pill pill-pink" style="font-size:13px;font-weight:700;">LangGraph StateGraph</span>
+      &nbsp;
+      <span class="pill pill-purple" style="font-size:13px;font-weight:700;">Ollama</span>
+      &nbsp;
+      <span class="pill pill-blue" style="font-size:13px;font-weight:700;">Qwen3:8b LLM</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════
+     DIAGRAM 4 — MVC MAPPING
+══════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-title">Diagram 4</div>
+    <div class="slide-heading">MVC <em>Architecture Mapping</em></div>
+
+    <div class="mvc-grid">
+
+      <!-- VIEW -->
+      <div class="mvc-col">
+        <div class="mvc-header mh-view">
+          <div class="mh-label">Presentation</div>
+          <div class="mh-title">VIEW</div>
+          <div class="mh-sub">What the user sees &amp; interacts with</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🔑</div>
+          <div class="mi-title">Login &amp; Signup</div>
+          <div class="mi-sub">User authentication screens. Role selection at signup.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">💬</div>
+          <div class="mi-title">Chat Interface</div>
+          <div class="mi-sub">Natural language query input with real-time response.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">📊</div>
+          <div class="mi-title">Dashboard &amp; Charts</div>
+          <div class="mi-sub">Bar, Line, Pie chart visualizations of query results.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">📋</div>
+          <div class="mi-title">Query History &amp; Reports</div>
+          <div class="mi-sub">Past queries with SQL, explanation, and chart.</div>
+        </div>
+      </div>
+
+      <!-- CONTROLLER -->
+      <div class="mvc-col">
+        <div class="mvc-header mh-ctrl">
+          <div class="mh-label">Application Logic</div>
+          <div class="mh-title">CONTROLLER</div>
+          <div class="mh-sub">Handles requests, applies rules, calls services</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🔒</div>
+          <div class="mi-title">Authentication</div>
+          <div class="mi-sub">JWT token creation &amp; verification. Password hashing. Role-based access control.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🧑‍💼</div>
+          <div class="mi-title">Admin Management</div>
+          <div class="mi-sub">Connect organisation database. Create employee accounts. SQL Workspace with
+            commit/rollback.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">👤</div>
+          <div class="mi-title">Employee Management</div>
+          <div class="mi-sub">Read-only AI analytics access. Query history scoped to the employee.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🤖</div>
+          <div class="mi-title">AI Analytics</div>
+          <div class="mi-sub">Coordinates the AI pipeline. Receives question, returns SQL + insight + chart.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🔧</div>
+          <div class="mi-title">Database Service</div>
+          <div class="mi-sub">Builds encrypted connections to organisation database. Tests connection health.</div>
+        </div>
+      </div>
+
+      <!-- MODEL -->
+      <div class="mvc-col">
+        <div class="mvc-header mh-model">
+          <div class="mh-label">Data</div>
+          <div class="mh-title">MODEL</div>
+          <div class="mh-sub">Data structures and persistent storage</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">👥</div>
+          <div class="mi-title">User Model</div>
+          <div class="mi-sub">Stores user name, email, hashed password, role, and organisation ID.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🏢</div>
+          <div class="mi-title">Organisation Config</div>
+          <div class="mi-sub">Database host, port, name, username. Password stored encrypted — never plaintext.</div>
+        </div>
+        <div class="mvc-item">
+          <div class="mi-icon">🕓</div>
+          <div class="mi-title">Query History</div>
+          <div class="mi-sub">Stores each query: the question, generated SQL, AI explanation, and chart type.</div>
+        </div>
+        <div class="mvc-item" style="border:2px solid #e0f2fe;">
+          <div class="mi-icon">🐘</div>
+          <div class="mi-title">Platform Database</div>
+          <div class="mi-sub">PostgreSQL — managed by SQLense. Stores users, config, query history.</div>
+        </div>
+        <div class="mvc-item" style="border:2px solid #ccfbf1;">
+          <div class="mi-icon">🏢</div>
+          <div class="mi-title">Organisation Database</div>
+          <div class="mi-sub">PostgreSQL — owned by the company. Never touched by SQLense storage. Read-only via AI.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Role cards -->
+    <div style="margin-top:28px;width:100%;">
+      <div
+        style="text-align:center;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.65);margin-bottom:14px;">
+        Role-Based Access Control</div>
+      <div class="role-grid">
+        <div class="role-card admin">
+          <div class="rc-title">🧑‍💼 Admin</div>
+          <ul>
+            <li>Connect &amp; configure organisation database</li>
+            <li>Create and manage employee accounts</li>
+            <li>SQL Workspace — full CRUD, DDL &amp; DML</li>
+            <li>Transaction control — Commit / Rollback</li>
+            <li>Access AI Analytics</li>
+          </ul>
+        </div>
+        <div class="role-card employee">
+          <div class="rc-title">👤 Employee</div>
+          <ul>
+            <li>Ask natural language business questions</li>
+            <li>View AI-generated charts and insights</li>
+            <li>Read-only access — no write operations</li>
+            <li>View personal query history</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key features -->
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="fc-icon">🏢</div>
+        <div class="fc-title">Organisation Isolation</div>
+        <div class="fc-sub">Each organisation's data is completely isolated. One admin's employees can never access
+          another organisation's data.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔒</div>
+        <div class="fc-title">Privacy-First Design</div>
+        <div class="fc-sub">Company business data never leaves the organisation's own database. SQLense only reads —
+          never copies or stores business records.</div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🛡️</div>
+        <div class="fc-title">Secure by Default</div>
+        <div class="fc-sub">Passwords hashed with bcrypt · Database credentials encrypted with Fernet · JWT tokens
+          expire in 60 minutes.</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+
+</html>
