@@ -13,6 +13,7 @@ from sqlalchemy import func, text
 
 from app.database import get_db
 from app.models.user import User, UserRole, UserStatus
+from app.models.superadmin import SuperAdmin
 from app.models.query_history import QueryHistory
 from app.models.audit_log import AuditLog
 from app.core.deps import require_role
@@ -87,7 +88,7 @@ def get_audit_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(_admin_dep),
 ):
-    """Paginated audit log for the current organisation."""
+    """Paginated audit log for the current organisation with full user attribution."""
     total = db.query(func.count(AuditLog.id)).filter(
         AuditLog.org_id == current_user.org_id
     ).scalar()
@@ -101,19 +102,38 @@ def get_audit_log(
         .all()
     )
 
+    # Collect user details for user attribution
+    user_ids = {e.user_id for e in entries if e.user_id}
+    user_map = {}
+    if user_ids:
+        users = db.query(User).filter(User.id.in_(user_ids)).all()
+        for u in users:
+            user_map[u.id] = {"name": u.name, "email": u.email, "role": u.role.value}
+        
+        missing_ids = user_ids - set(user_map.keys())
+        if missing_ids:
+            sa_users = db.query(SuperAdmin).filter(SuperAdmin.id.in_(missing_ids)).all()
+            for sa in sa_users:
+                user_map[sa.id] = {"name": sa.name, "email": sa.email, "role": "superadmin"}
+
+    res_entries = []
+    for e in entries:
+        info = user_map.get(e.user_id) if e.user_id else None
+        res_entries.append({
+            "id": str(e.id),
+            "action": e.action,
+            "user_id": str(e.user_id) if e.user_id else None,
+            "user_name": info["name"] if info else ("System / Admin" if not e.user_id else "User"),
+            "user_email": info["email"] if info else (current_user.email if not e.user_id else "N/A"),
+            "user_role": info["role"] if info else "admin",
+            "detail": e.detail,
+            "ip_address": e.ip_address,
+            "created_at": e.created_at,
+        })
+
     return {
         "total": total,
         "offset": offset,
         "limit": limit,
-        "entries": [
-            {
-                "id": str(e.id),
-                "action": e.action,
-                "user_id": str(e.user_id) if e.user_id else None,
-                "detail": e.detail,
-                "ip_address": e.ip_address,
-                "created_at": e.created_at,
-            }
-            for e in entries
-        ],
+        "entries": res_entries,
     }

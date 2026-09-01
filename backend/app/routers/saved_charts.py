@@ -1,10 +1,10 @@
 """
 Saved Charts Router
 ────────────────────
-Routes:
-  GET    /api/saved-charts  &  /saved-charts          List saved charts for current user
-  POST   /api/saved-charts  &  /saved-charts          Save a chart from AI chat response
-  DELETE /api/saved-charts/{id} & /saved-charts/{id} Delete a saved chart
+Routes (prefix applied in main.py as /api/saved-charts):
+  GET    /         List saved charts for current user
+  POST   /         Save a chart from AI chat response
+  DELETE /{id}     Delete a saved chart
 """
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -42,9 +42,8 @@ class SavedChartOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── GET /saved-charts & /api/saved-charts ──────────────────────────────────────
-@router.get("/saved-charts", response_model=list[SavedChartOut])
-@router.get("/api/saved-charts", response_model=list[SavedChartOut])
+# ── GET / ──────────────────────────────────────────────────────────────────────
+@router.get("", response_model=list[SavedChartOut])
 def list_saved_charts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -72,9 +71,8 @@ def list_saved_charts(
     ]
 
 
-# ── POST /saved-charts & /api/saved-charts ────────────────────────────────────
-@router.post("/saved-charts", status_code=status.HTTP_201_CREATED)
-@router.post("/api/saved-charts", status_code=status.HTTP_201_CREATED)
+# ── POST / ────────────────────────────────────────────────────────────────────
+@router.post("", status_code=status.HTTP_201_CREATED)
 def save_chart(
     payload: SaveChartRequest,
     db: Session = Depends(get_db),
@@ -96,9 +94,8 @@ def save_chart(
     return {"id": str(chart.id), "message": "Chart saved successfully."}
 
 
-# ── DELETE /saved-charts/{id} & /api/saved-charts/{id} ────────────────────────
-@router.delete("/saved-charts/{chart_id}", status_code=status.HTTP_204_NO_CONTENT)
-@router.delete("/api/saved-charts/{chart_id}", status_code=status.HTTP_204_NO_CONTENT)
+# ── DELETE /{chart_id} ────────────────────────────────────────────────────────
+@router.delete("/{chart_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_saved_chart(
     chart_id: str,
     db: Session = Depends(get_db),

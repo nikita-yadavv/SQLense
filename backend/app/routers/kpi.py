@@ -18,7 +18,7 @@ from typing import Any
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.kpi_tile import KPITile
-from app.core.deps import require_role
+from app.core.deps import require_role, get_current_user
 from app.core.audit import log_action
 from app.services.db_connection import build_org_engine
 
@@ -50,7 +50,7 @@ class KPIChatRequest(BaseModel):
 @router.get("/kpi-tiles")
 def list_kpi_tiles(
     db: Session = Depends(get_db),
-    current_user: User = Depends(_admin_dep),
+    current_user: User = Depends(get_current_user),   # employees can VIEW tiles
 ):
     tiles = (
         db.query(KPITile)
@@ -127,7 +127,7 @@ def delete_kpi_tile(
 @router.post("/kpi-tiles/run")
 def run_kpi_tiles(
     db: Session = Depends(get_db),
-    current_user: User = Depends(_admin_dep),
+    current_user: User = Depends(get_current_user),   # employees can RUN (view live values)
 ):
     """Execute all KPI tile queries against the org database and return live values."""
     tiles = (
@@ -192,7 +192,7 @@ def run_kpi_tiles(
 def kpi_dashboard_chat(
     payload: KPIChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(_admin_dep),
+    current_user: User = Depends(get_current_user),   # employees can use KPI chat
 ):
     """
     AI chat with the current dashboard data as context.

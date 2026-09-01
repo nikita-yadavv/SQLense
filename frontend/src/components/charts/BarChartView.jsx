@@ -3,7 +3,8 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
-const COLORS = ["#06b6d4", "#0891b2", "#67e8f9", "#155e75", "#a5f3fc"];
+// Distinct, high-contrast color palette — each series is clearly distinguishable
+const COLORS = ["#514354", "#86728B", "#BAA7BF", "#2d7a56", "#a0650f", "#b03050"];
 
 export default function BarChartView({ title, data, yKeys }) {
   return (

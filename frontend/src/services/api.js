@@ -43,16 +43,12 @@ api.interceptors.response.use(
 export const authAPI = {
   login:          (data) => api.post("/auth/login", data),
   signup:         (data) => api.post("/auth/signup", data),
-  // NEW: Employee self-registration via join code
   joinWithCode:   (data) => api.post("/auth/join", data),
   createEmployee: (data) => api.post("/auth/admin/create-employee", data),
-  // NEW: Admin approval workflow
   getPending:     ()     => api.get("/auth/admin/pending"),
   approveEmployee:(id)   => api.post(`/auth/admin/approve/${id}`),
   rejectEmployee: (id)   => api.post(`/auth/admin/reject/${id}`),
-  // NEW: Admin join code retrieval
   getJoinCode:    ()     => api.get("/auth/admin/join-code"),
-  // Profile (GET/PUT /auth/me)
   me:             ()     => api.get("/auth/me"),
   updateMe:       (data) => api.put("/auth/me", data),
 };
@@ -63,7 +59,6 @@ export const savedChartsAPI = {
   save:   (data) => api.post("/api/saved-charts", data),
   delete: (id)   => api.delete(`/api/saved-charts/${id}`),
 };
-
 
 // ── Database Configuration ─────────────────────────────────
 export const dbAPI = {
@@ -77,43 +72,42 @@ export const dbAPI = {
 
 // ── Chat ───────────────────────────────────────────────────
 export const chatAPI = {
-  ask: (question) => api.post("/chat", { question }),
+  ask: (question) => api.post("/api/chat", { question }),
 };
 
 // ── History ────────────────────────────────────────────────
 export const historyAPI = {
   list: (limit = 50, offset = 0) =>
-    api.get("/history", { params: { limit, offset } }),
+    api.get("/api/history", { params: { limit, offset } }),
 };
 
 // ── Admin Workspace ────────────────────────────────────────
 export const workspaceAPI = {
-  execute:  (sql) => api.post("/admin/workspace/execute", { sql, action: "execute" }),
-  commit:   ()    => api.post("/admin/workspace/execute", { sql: "", action: "commit" }),
-  rollback: ()    => api.post("/admin/workspace/execute", { sql: "", action: "rollback" }),
+  execute:  (sql) => api.post("/api/admin/workspace/execute", { sql, action: "execute" }),
+  commit:   ()    => api.post("/api/admin/workspace/execute", { sql: "", action: "commit" }),
+  rollback: ()    => api.post("/api/admin/workspace/execute", { sql: "", action: "rollback" }),
 };
 
 // ── Admin Analytics ────────────────────────────────────────
 export const analyticsAPI = {
-  employees: ()         => api.get("/admin/analytics/employees"),
-  daily:     (days=30)  => api.get("/admin/analytics/daily", { params: { days } }),
+  employees: ()         => api.get("/api/admin/analytics/employees"),
+  daily:     (days=30)  => api.get("/api/admin/analytics/daily", { params: { days } }),
   auditLog:  (limit=50, offset=0) =>
-    api.get("/admin/audit-log", { params: { limit, offset } }),
+    api.get("/api/admin/audit-log", { params: { limit, offset } }),
 };
 
 // ── KPI Tiles ──────────────────────────────────────────────
 export const kpiAPI = {
-  list:    ()           => api.get("/admin/kpi-tiles"),
-  create:  (data)       => api.post("/admin/kpi-tiles", data),
-  update:  (id, data)   => api.put(`/admin/kpi-tiles/${id}`, data),
-  delete:  (id)         => api.delete(`/admin/kpi-tiles/${id}`),
-  run:     ()           => api.post("/admin/kpi-tiles/run"),
+  list:    ()           => api.get("/api/admin/kpi-tiles"),
+  create:  (data)       => api.post("/api/admin/kpi-tiles", data),
+  update:  (id, data)   => api.put(`/api/admin/kpi-tiles/${id}`, data),
+  delete:  (id)         => api.delete(`/api/admin/kpi-tiles/${id}`),
+  run:     ()           => api.post("/api/admin/kpi-tiles/run"),
   chat:    (question, dashboard_data) =>
-    api.post("/admin/kpi-chat", { question, dashboard_data }),
+    api.post("/api/admin/kpi-chat", { question, dashboard_data }),
 };
 
 // ── SuperAdmin ─────────────────────────────────────────────
-// Uses a separate token stored under a different key
 const superadminApi = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -127,13 +121,13 @@ superadminApi.interceptors.request.use((config) => {
 export const superadminAPI = {
   login:    (data) => superadminApi.post("/api/superadmin/login", data),
   orgs:     ()     => superadminApi.get("/api/superadmin/orgs"),
+  users:    ()     => superadminApi.get("/api/superadmin/users"),
   stats:    ()     => superadminApi.get("/api/superadmin/stats"),
   reports:  ()     => superadminApi.get("/api/superadmin/reports"),
   chat:     (question) => superadminApi.post("/api/superadmin/chat", { question }),
   me:       ()     => superadminApi.get("/api/superadmin/me"),
   updateMe: (data) => superadminApi.put("/api/superadmin/me", data),
 };
-
 
 // ── Error helper ───────────────────────────────────────────
 export function getErrorMessage(error) {

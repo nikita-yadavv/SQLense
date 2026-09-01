@@ -7,14 +7,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // All API requests are proxied to the FastAPI backend (:8000)
-      '/auth':         { target: 'http://localhost:8000', changeOrigin: true },
-      '/api':          { target: 'http://localhost:8000', changeOrigin: true },
-      '/chat':         { target: 'http://localhost:8000', changeOrigin: true },
-      '/history':      { target: 'http://localhost:8000', changeOrigin: true },
-      '/admin':        { target: 'http://localhost:8000', changeOrigin: true },
-      '/health':       { target: 'http://localhost:8000', changeOrigin: true },
-      '/saved-charts': { target: 'http://localhost:8000', changeOrigin: true },
+      // All backend API requests proxy to the FastAPI backend on port 8000
+      '/auth':   { target: 'http://localhost:8000', changeOrigin: true },
+      '/api':    { target: 'http://localhost:8000', changeOrigin: true },
+      '/health': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
 })

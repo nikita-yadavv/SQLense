@@ -66,7 +66,7 @@ export default function Sidebar({ onNewChat }) {
     <div className="sidebar">
       {/* Logo */}
       <h2 className="logo">
-        <span style={{ fontSize: 20 }}>🤖</span> SQLense
+        SQLense
       </h2>
 
       {/* New Chat button */}
@@ -99,6 +99,11 @@ export default function Sidebar({ onNewChat }) {
           <BarChart2 size={17} />
           <span>Saved Charts</span>
         </NavLink>
+
+        <NavLink to={isAdmin ? "/admin/kpi-dashboard" : "/kpi-dashboard"} className={navClass} id="nav-kpi-dashboard">
+          <Star size={17} />
+          <span>KPI Dashboard</span>
+        </NavLink>
       </div>
 
       {/* Recent Chats */}
@@ -118,7 +123,13 @@ export default function Sidebar({ onNewChat }) {
               <button
                 key={chat.id}
                 className="recent-chat-item"
-                onClick={() => navigate("/chat")}
+                onClick={() => {
+                  const initialMsg = [
+                    { id: "msg-" + chat.id, role: "user", text: chat.title, timestamp: chat.time }
+                  ];
+                  localStorage.setItem("sqlense_active_chat", JSON.stringify(initialMsg));
+                  navigate("/chat");
+                }}
                 title={chat.title}
                 id={`recent-chat-${chat.id}`}
               >
@@ -197,11 +208,6 @@ export default function Sidebar({ onNewChat }) {
           <NavLink to="/admin/analytics" className={navClass} id="nav-admin-analytics">
             <TrendingUp size={17} />
             <span>Analytics</span>
-          </NavLink>
-
-          <NavLink to="/admin/kpi-dashboard" className={navClass} id="nav-admin-kpi">
-            <Star size={17} />
-            <span>KPI Dashboard</span>
           </NavLink>
 
           <NavLink to="/admin/audit-log" className={navClass} id="nav-admin-audit">

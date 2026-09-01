@@ -3,8 +3,8 @@ import {
 } from "recharts";
 
 const COLORS = [
-  "#06b6d4", "#0891b2", "#67e8f9", "#155e75",
-  "#a5f3fc", "#0e7490", "#22d3ee", "#164e63",
+  "#514354", "#86728B", "#BAA7BF", "#D7C9DB",
+  "#2d1f33", "#a07ead", "#6e5673", "#c4b2ca",
 ];
 
 export default function PieChartView({ title, data, yKeys }) {

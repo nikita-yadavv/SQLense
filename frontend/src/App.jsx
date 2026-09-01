@@ -17,6 +17,7 @@
  *   /admin/employees          → EmployeesPage (admin only)
  *   /admin/analytics          → AnalyticsPage  (admin only) [NEW]
  *   /admin/kpi-dashboard      → KPIDashboardPage (admin only) [NEW]
+ *   /kpi-dashboard            → KPIDashboardPage (any auth user — employee view)
  *   /admin/audit-log          → AuditLogPage (admin only) [NEW]
  *   /superadmin/login         → SuperAdminLogin (public, separate) [NEW]
  *   /superadmin/dashboard     → SuperAdminDashboard (superadmin only) [NEW]
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/saved-charts" element={P(SavedChartsPage)} />
               <Route path="/profile"     element={P(ProfilePage)} />
               <Route path="/settings"    element={P(SettingsPage)} />
+              <Route path="/kpi-dashboard" element={P(KPIDashboardPage)} />
 
               {/* ── Admin only ──────────────────────────── */}
               <Route path="/admin/dashboard"    element={A(AdminDashboardPage)} />

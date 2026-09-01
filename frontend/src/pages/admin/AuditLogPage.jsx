@@ -1,15 +1,16 @@
 /**
- * AuditLogPage (Admin only) — paginated timeline of all actions in this org.
+ * AuditLogPage — paginated security activity log for Admin.
+ * Displays every significant action (login, signup, queries, approvals) with full user attribution.
  */
 import { useState, useEffect, useCallback } from "react";
-import {
-  Shield, ChevronLeft, ChevronRight, RefreshCw,
-  LogIn, MessageSquare, Database, UserCheck, UserX,
-  UserPlus, Terminal, Star, Trash2,
-} from "lucide-react";
-import Layout  from "../../components/Layout";
+import Layout from "../../components/Layout";
 import Spinner from "../../components/Spinner";
 import { analyticsAPI, getErrorMessage } from "../../services/api";
+import {
+  Shield, LogIn, UserPlus, UserCheck, UserX, Database,
+  MessageSquare, Terminal, Star, Trash2, RefreshCw,
+  ChevronLeft, ChevronRight, User
+} from "lucide-react";
 
 const ACTION_META = {
   USER_LOGIN:          { icon: <LogIn size={14} />,         color: "#22c55e", label: "Login" },
@@ -130,8 +131,28 @@ export default function AuditLogPage() {
                             fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20,
                           }}>{entry.action}</span>
                         </div>
+
+                        {/* User attribution */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                          <User size={12} color="var(--primary)" />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-heading)" }}>
+                            {entry.user_name || "System Admin"}
+                          </span>
+                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                            ({entry.user_email || "admin"})
+                          </span>
+                          {entry.user_role && (
+                            <span style={{
+                              fontSize: 9.5, fontWeight: 700, padding: "1px 6px", borderRadius: 10,
+                              background: "var(--primary-light)", color: "var(--primary-dark)"
+                            }}>
+                              {entry.user_role.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+
                         {entry.detail && (
-                          <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
                             {entry.detail}
                           </p>
                         )}

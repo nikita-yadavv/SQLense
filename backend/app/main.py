@@ -50,17 +50,23 @@ def health_check():
 
 
 # ── Core Routes ────────────────────────────────────────────────────────────────
-app.include_router(auth.router,       prefix="/auth",           tags=["Auth"])
-app.include_router(db_config.router,  prefix="/api/database",   tags=["Database Config"])
-app.include_router(chat.router,       prefix="",                tags=["Chat"])
-app.include_router(history.router,    prefix="",                tags=["History"])
-app.include_router(workspace.router,  prefix="/admin",          tags=["Admin - Workspace"])
+app.include_router(auth.router,         prefix="/auth",           tags=["Auth"])
+app.include_router(db_config.router,    prefix="/api/database",   tags=["Database Config"])
+app.include_router(chat.router,         prefix="/api",            tags=["Chat"])
+app.include_router(chat.router,         prefix="",                tags=["Chat Legacy"])
+app.include_router(history.router,      prefix="/api",            tags=["History"])
+app.include_router(history.router,      prefix="",                tags=["History Legacy"])
+app.include_router(saved_charts.router,  prefix="/api/saved-charts", tags=["Saved Charts"])
 
-# ── New Phase 1–5 Routes ────────────────────────────────────────────────────────
-app.include_router(superadmin.router, prefix="/api/superadmin",  tags=["SuperAdmin"])
+# ── SuperAdmin Routes ──────────────────────────────────────────────────────────
+app.include_router(superadmin.router,   prefix="/api/superadmin", tags=["SuperAdmin"])
 
-app.include_router(analytics.router,     prefix="/admin",          tags=["Admin - Analytics"])
-app.include_router(kpi.router,           prefix="/admin",          tags=["Admin - KPI"])
-app.include_router(saved_charts.router,  prefix="",               tags=["Saved Charts"])
+# ── Admin Routes (/api/admin + legacy /admin) ──────────────────────────────────
+app.include_router(workspace.router,    prefix="/api/admin",      tags=["Admin - Workspace"])
+app.include_router(workspace.router,    prefix="/admin",          tags=["Admin - Workspace Legacy"])
 
+app.include_router(analytics.router,    prefix="/api/admin",      tags=["Admin - Analytics"])
+app.include_router(analytics.router,    prefix="/admin",          tags=["Admin - Analytics Legacy"])
 
+app.include_router(kpi.router,          prefix="/api/admin",      tags=["Admin - KPI"])
+app.include_router(kpi.router,          prefix="/admin",          tags=["Admin - KPI Legacy"])

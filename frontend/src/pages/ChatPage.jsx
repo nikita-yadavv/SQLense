@@ -1,16 +1,33 @@
 /**
  * ChatPage — wraps ChatWindow inside the shared Layout.
- * Manages the messages state and passes "New Chat" reset
- * both to the Layout (sidebar button) and down to ChatWindow.
+ * Manages persistent messages state across page navigation and reloads.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout     from "../components/Layout";
 import ChatWindow from "../components/ChatWindow";
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sqlense_active_chat");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem("sqlense_active_chat", JSON.stringify(messages));
+      }
+    } catch (e) {
+      console.error("Error persisting chat messages:", e);
+    }
+  }, [messages]);
 
   function startNewChat() {
+    localStorage.removeItem("sqlense_active_chat");
     setMessages([]);
   }
 

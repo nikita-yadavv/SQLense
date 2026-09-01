@@ -127,8 +127,8 @@ export default function SignupPage() {
       <div className="auth-card">
         {/* Logo */}
         <div className="auth-logo">
-          <h1>🤖 SQLense</h1>
-          <p>AI-powered database analytics</p>
+          <h1>SQLense</h1>
+          <p>Smart database analytics & insights</p>
         </div>
 
         <h2 className="auth-title">Create an account</h2>

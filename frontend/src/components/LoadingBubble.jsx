@@ -8,7 +8,7 @@ export default function LoadingBubble() {
           <span />
           <span />
         </div>
-        <span className="loading-text">SQLense is thinking…</span>
+        <span className="loading-text">Analysing your query…</span>
       </div>
     </div>
   );

@@ -1,93 +1,91 @@
 /* ============================================================
-   SQLense — Global Design System
-   Single source of truth for all design tokens.
-   All component styles reference these variables.
+   SQLense — Royal Midnight & Porcelain Luxury Theme
+   Palette:
+     • Midnight Blue (Sidebar & Headings): #081F5C / #0B1938
+     • Royal Blue (Primary Buttons & Active): #334EAC / #2563EB
+     • China Blue (Sub-headers & Accents): #7096D1
+     • Dawn / Sky (Ice Blue Sidebar Text): #D0E3FF / #BAD6EB
+     • Porcelain / Canvas (Warm Background): #F8FAFC / #F7F2EB
+     • Surface (Cards & Panels): #ffffff
    ============================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
-  /* Brand palette */
-  --primary:        #06b6d4;   /* cyan-500  */
-  --primary-dark:   #0891b2;   /* cyan-600  */
-  --primary-light:  #cffafe;   /* cyan-100  */
-  --primary-xlight: #ecfeff;   /* cyan-50   */
-  --primary-ring:   #a5f3fc;   /* cyan-200  */
+  /* ── Royal Midnight Palette ── */
+  --primary:        #334EAC;   /* Royal Blue — primary actions & active tabs */
+  --primary-dark:   #081F5C;   /* Midnight Navy — headings, strong emphasis */
+  --primary-light:  #D0E3FF;   /* Dawn Ice Blue — hover fills, soft badges */
+  --primary-xlight: #EDF4FF;   /* Softest Ice Blue — highlights */
+  --primary-ring:   #7096D1;   /* China Blue — focus rings & borders */
 
-  /* Neutrals */
-  --bg:             #ffffff;
-  --surface:        #f8fafc;   /* slate-50  */
-  --sidebar-bg:     #f0fdff;   /* custom light cyan */
-  --border:         #e2e8f0;   /* slate-200 */
-  --border-light:   #d5f5f5;
+  /* ── Surfaces & Backgrounds ── */
+  --bg:             #F5EFF7;   /* Elegant soft purple-tinted canvas (#FEFAFF to #EAE2ED palette) */   /* Crisp Porcelain Canvas */
+  --surface:        #ffffff;   /* Pure White Cards & Panels */
+  --surface-elevated: #F7F2EB; /* Warm Moon elevated surface */
+  --sidebar-bg:     #081F5C;   /* Deep Midnight Navy Sidebar */
+  --border:         #E2E8F0;   /* Clean card & container border */
+  --border-light:   #EDF1F6;   /* Subtle divider border */
 
-  /* Text */
-  --text-heading:   #0f172a;   /* slate-900 */
-  --text-body:      #334155;   /* slate-700 */
-  --text-muted:     #64748b;   /* slate-500 */
-  --text-on-primary:#ffffff;
+  /* ── Text ── */
+  --text-heading:   #081F5C;   /* Midnight Navy headings — bold, crisp */
+  --text-body:      #1E293B;   /* Slate Charcoal body text */
+  --text-muted:     #64748B;   /* Slate Blue secondary text */
+  --text-on-primary:#ffffff;   /* White text on primary buttons */
 
-  /* Semantic */
-  --success:        #22c55e;
-  --success-bg:     #f0fdf4;
-  --success-border: #bbf7d0;
-  --warning:        #f59e0b;
+  /* ── Sidebar Text & Accents (Dark Sidebar) ── */
+  --sidebar-text:       #D0E3FF; /* Ice Blue menu text */
+  --sidebar-text-muted: #8EA4D2; /* Muted Slate Blue labels */
+  --sidebar-hover:      rgba(255, 255, 255, 0.08);
+  --sidebar-active-bg:  #2563EB; /* Vibrant Royal Blue active pill */
+  --sidebar-border:     rgba(255, 255, 255, 0.08);
+
+  /* ── Semantic State Tokens ── */
+  --success:        #16a34a;
+  --success-bg:     #ecfdf5;
+  --success-border: #a7f3d0;
+  --warning:        #d97706;
   --warning-bg:     #fffbeb;
-  --error:          #ef4444;
+  --warning-border: #fde68a;
+  --error:          #dc2626;
   --error-bg:       #fef2f2;
   --error-border:   #fecaca;
-  --info:           #3b82f6;
-  --info-bg:        #eff6ff;
+  --info:           #0284c7;
+  --info-bg:        #f0f9ff;
 
-  /* SQL / code */
-  --code-bg:        #ecfeff;
-  --code-border:    #a5f3fc;
-  --code-text:      #155e75;
+  /* ── Code blocks ── */
+  --code-bg:        #0F172A;
+  --code-border:    #1E293B;
+  --code-text:      #38BDF8;
 
-  /* Shadows */
-  --shadow-sm:      0 1px 3px rgba(0,0,0,0.08);
-  --shadow-md:      0 4px 15px rgba(0,0,0,0.08);
-  --shadow-lg:      0 8px 25px rgba(0,0,0,0.12);
-  --shadow-popup:   0 8px 25px rgba(0,0,0,0.15);
+  /* ── Shadows ── */
+  --shadow-sm:      0 2px 6px rgba(8, 31, 92, 0.04);
+  --shadow-md:      0 6px 20px rgba(8, 31, 92, 0.06), 0 2px 6px rgba(8, 31, 92, 0.03);
+  --shadow-lg:      0 12px 32px rgba(8, 31, 92, 0.10), 0 4px 12px rgba(8, 31, 92, 0.05);
+  --shadow-popup:   0 20px 45px rgba(8, 31, 92, 0.18);
 
-  /* Radius */
+  /* ── Radius ── */
   --radius-sm:      8px;
   --radius-md:      12px;
   --radius-lg:      16px;
-  --radius-xl:      18px;
+  --radius-xl:      20px;
   --radius-full:    9999px;
 
-  /* Typography */
-  --font-sans:      "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono:      ui-monospace, "Cascadia Code", Consolas, monospace;
+  /* ── Typography ── */
+  --font-sans:      "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading:   "Outfit", "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-mono:      "JetBrains Mono", ui-monospace, "Cascadia Code", "Fira Code", Consolas, monospace;
 
-  /* Transitions */
-  --transition:     all 0.15s ease;
+  /* ── Transitions ── */
+  --transition:     all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Z-index layers */
+  /* ── Z-index ── */
   --z-toast:        9999;
   --z-modal:        1000;
   --z-dropdown:     100;
 }
 
-/* Dark mode support (mirrors the cyan palette in dark tones) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg:             #0f172a;
-    --surface:        #1e293b;
-    --sidebar-bg:     #0f1f2e;
-    --border:         #334155;
-    --border-light:   #1e3a4a;
-    --text-heading:   #f1f5f9;
-    --text-body:      #cbd5e1;
-    --text-muted:     #94a3b8;
-    --code-bg:        #0c2231;
-    --code-border:    #164e63;
-    --code-text:      #67e8f9;
-    --shadow-md:      0 4px 15px rgba(0,0,0,0.3);
-    --shadow-lg:      0 8px 25px rgba(0,0,0,0.4);
-  }
-}
-
-/* ── Reset ────────────────────────────────────────────────── */
+/* ── Reset & Canvas ────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -112,7 +110,9 @@ body {
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
   color: var(--text-heading);
-  font-family: var(--font-sans);
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
 p { margin: 0; }
@@ -122,7 +122,7 @@ a:hover { color: var(--primary-dark); }
 /* ── Scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb { background: rgba(8, 31, 92, 0.15); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary-ring); }
 
 /* ── Code/pre ─────────────────────────────────────────────── */

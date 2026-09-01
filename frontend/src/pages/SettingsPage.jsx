@@ -1,77 +1,82 @@
 /**
- * SettingsPage — application preferences and display settings.
- * All settings stored in localStorage only. No API calls.
+ * SettingsPage — user and admin application preferences.
  */
-import { useState, useEffect } from "react";
-import { Sun, Moon, Monitor, Bell, MessageSquare, Globe, Palette, Save } from "lucide-react";
-import Layout       from "../components/Layout";
-import ToggleSwitch from "../components/ToggleSwitch";
+import { useState } from "react";
+import Layout from "../components/Layout";
 import { useToast } from "../context/ToastContext";
+import {
+  Bell, MessageSquare, Save
+} from "lucide-react";
 
-const THEMES      = ["system", "light", "dark"];
-const LANGUAGES   = ["English (US)", "English (UK)", "Spanish", "French", "German", "Hindi"];
-const CHART_TYPES = ["Bar Chart", "Line Chart", "Pie Chart", "Auto-detect"];
+const DEFAULTS = {
+  compactMode:        false,
+  notifications:      true,
+  queryAlerts:        true,
+  showSuggestions:    true,
+  autoScroll:         true,
+  showSQLByDefault:   true,
+  showTableByDefault: true,
+  defaultChart:       "Auto-detect",
+};
 
-function loadSettings() {
-  try {
-    const saved = localStorage.getItem("sqlense_settings");
-    if (saved) return JSON.parse(saved);
-  } catch { /* ignore */ }
-  return {
-    theme:              "system",
-    language:           "English (US)",
-    defaultChart:       "Auto-detect",
-    notifications:      true,
-    queryAlerts:        true,
-    showSuggestions:    true,
-    autoScroll:         true,
-    compactMode:        false,
-    showSQLByDefault:   true,
-    showTableByDefault: true,
-  };
-}
+const CHART_TYPES = ["Auto-detect", "Bar Chart", "Line Chart", "Pie Chart"];
 
-function ThemeIcon({ theme }) {
-  if (theme === "light")  return <Sun size={16} />;
-  if (theme === "dark")   return <Moon size={16} />;
-  return <Monitor size={16} />;
+function ToggleSwitch({ id, checked, onChange, label, description }) {
+  return (
+    <div className="settings-field flex-row justify-between" style={{ padding: "12px 0", borderBottom: "1px solid var(--border-light)" }}>
+      <div>
+        <label htmlFor={id} className="form-label" style={{ marginBottom: 2, cursor: "pointer", fontWeight: 600 }}>
+          {label}
+        </label>
+        {description && (
+          <p className="card-subtitle" style={{ marginBottom: 0, fontSize: 12 }}>
+            {description}
+          </p>
+        )}
+      </div>
+      <button
+        type="button"
+        id={id}
+        role="switch"
+        aria-checked={checked}
+        className={`toggle-switch ${checked ? "toggle-on" : ""}`}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="toggle-thumb" />
+      </button>
+    </div>
+  );
 }
 
 export default function SettingsPage() {
-  const { toast }        = useToast();
-  const [settings, setSettings] = useState(loadSettings);
+  const { toast } = useToast();
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem("sqlense_settings");
+    return saved ? { ...DEFAULTS, ...JSON.parse(saved) } : DEFAULTS;
+  });
+
   const [hasChanges, setHasChanges] = useState(false);
 
   function update(key, val) {
-    setSettings((p) => ({ ...p, [key]: val }));
-    setHasChanges(true);
+    setSettings((prev) => {
+      const next = { ...prev, [key]: val };
+      setHasChanges(true);
+      return next;
+    });
   }
 
   function saveSettings() {
     localStorage.setItem("sqlense_settings", JSON.stringify(settings));
     setHasChanges(false);
-    toast.success("Settings saved successfully!");
+    toast.success("Preferences saved!");
   }
 
   function resetSettings() {
-    const defaults = loadSettings();
+    setSettings(DEFAULTS);
     localStorage.removeItem("sqlense_settings");
-    setSettings(defaults);
     setHasChanges(false);
-    toast.info("Settings reset to defaults.");
+    toast.info("Settings reset to default.");
   }
-
-  // Apply theme to document
-  useEffect(() => {
-    const root = document.documentElement;
-    if (settings.theme === "dark") {
-      root.setAttribute("data-theme", "dark");
-    } else if (settings.theme === "light") {
-      root.setAttribute("data-theme", "light");
-    } else {
-      root.removeAttribute("data-theme");
-    }
-  }, [settings.theme]);
 
   return (
     <Layout>
@@ -95,51 +100,12 @@ export default function SettingsPage() {
         </div>
 
         <div className="page-body">
-          <div className="settings-layout">
-
-            {/* ── Appearance ── */}
-            <div className="settings-section card">
-              <div className="settings-section-header">
-                <Palette size={18} className="settings-section-icon" />
-                <div>
-                  <h3 className="card-title">Appearance</h3>
-                  <p className="card-subtitle" style={{ marginBottom: 0 }}>
-                    Customize how SQLense looks.
-                  </p>
-                </div>
-              </div>
-
-              <div className="settings-field">
-                <label className="form-label">Theme</label>
-                <div className="theme-selector">
-                  {THEMES.map((t) => (
-                    <button
-                      key={t}
-                      id={`theme-${t}`}
-                      className={`theme-option ${settings.theme === t ? "theme-selected" : ""}`}
-                      onClick={() => update("theme", t)}
-                      type="button"
-                    >
-                      <ThemeIcon theme={t} />
-                      <span>{t.charAt(0).toUpperCase() + t.slice(1)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <ToggleSwitch
-                id="compact-mode"
-                checked={settings.compactMode}
-                onChange={(v) => update("compactMode", v)}
-                label="Compact Mode"
-                description="Reduce padding and spacing for a denser layout."
-              />
-            </div>
+          <div className="settings-layout" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
             {/* ── Notifications ── */}
             <div className="settings-section card">
-              <div className="settings-section-header">
-                <Bell size={18} className="settings-section-icon" />
+              <div className="settings-section-header" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <Bell size={18} color="var(--primary)" />
                 <div>
                   <h3 className="card-title">Notifications</h3>
                   <p className="card-subtitle" style={{ marginBottom: 0 }}>
@@ -166,12 +132,12 @@ export default function SettingsPage() {
 
             {/* ── Chat Preferences ── */}
             <div className="settings-section card">
-              <div className="settings-section-header">
-                <MessageSquare size={18} className="settings-section-icon" />
+              <div className="settings-section-header" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <MessageSquare size={18} color="var(--primary)" />
                 <div>
                   <h3 className="card-title">Chat Preferences</h3>
                   <p className="card-subtitle" style={{ marginBottom: 0 }}>
-                    Configure the chat experience.
+                    Configure the conversational AI chat experience.
                   </p>
                 </div>
               </div>
@@ -221,38 +187,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ── Language ── */}
-            <div className="settings-section card">
-              <div className="settings-section-header">
-                <Globe size={18} className="settings-section-icon" />
-                <div>
-                  <h3 className="card-title">Language & Region</h3>
-                  <p className="card-subtitle" style={{ marginBottom: 0 }}>
-                    Set your preferred language.
-                  </p>
-                </div>
-              </div>
-              <div className="settings-field">
-                <label className="form-label" htmlFor="language-select">Language</label>
-                <select
-                  id="language-select"
-                  className="form-input"
-                  value={settings.language}
-                  onChange={(e) => update("language", e.target.value)}
-                  style={{ maxWidth: 260 }}
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
           </div>
 
           {/* Bottom save bar */}
           {hasChanges && (
-            <div className="settings-save-bar">
+            <div className="settings-save-bar" style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 }}>
               <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
                 You have unsaved changes.
               </span>

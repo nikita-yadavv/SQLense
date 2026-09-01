@@ -11,9 +11,10 @@ import Layout    from "../../components/Layout";
 import Spinner   from "../../components/Spinner";
 import { kpiAPI, getErrorMessage } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 
 /* ── KPI Tile Card ──────────────────────────────────────────── */
-function TileCard({ tile, result, onDelete, onEdit }) {
+function TileCard({ tile, result, onDelete, onEdit, isAdmin }) {
   const rows = result?.rows || [];
   const cols = result?.columns || [];
   const hasError = !!result?.error;
@@ -30,14 +31,16 @@ function TileCard({ tile, result, onDelete, onEdit }) {
             <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{tile.description}</p>
           )}
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button className="btn btn-secondary btn-sm btn-icon" onClick={() => onEdit(tile)} id={`edit-tile-${tile.id}`}>
-            <Pencil size={12} />
-          </button>
-          <button className="btn btn-danger btn-sm btn-icon" onClick={() => onDelete(tile.id)} id={`delete-tile-${tile.id}`}>
-            <Trash2 size={12} />
-          </button>
-        </div>
+        {isAdmin && (
+          <div style={{ display: "flex", gap: 6 }}>
+            <button className="btn btn-secondary btn-sm btn-icon" onClick={() => onEdit(tile)} id={`edit-tile-${tile.id}`}>
+              <Pencil size={12} />
+            </button>
+            <button className="btn btn-danger btn-sm btn-icon" onClick={() => onDelete(tile.id)} id={`delete-tile-${tile.id}`}>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -55,15 +58,15 @@ function TileCard({ tile, result, onDelete, onEdit }) {
             <XAxis dataKey={cols[0]} tick={{ fontSize: 9 }} />
             <YAxis tick={{ fontSize: 9 }} />
             <Tooltip />
-            <Bar dataKey={cols[1]} fill="#6366f1" radius={[3,3,0,0]} />
+            <Bar dataKey={cols[1]} fill="#2563EB" radius={[4,4,0,0]} />
           </BarChart>
         </ResponsiveContainer>
       ) : firstVal !== null ? (
         <div style={{ textAlign: "center", padding: "8px 0" }}>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "var(--primary, #6366f1)" }}>
+          <div style={{ fontSize: 32, fontWeight: 800, color: "#081F5C", fontFamily: "var(--font-heading)" }}>
             {typeof firstVal === "number" ? firstVal.toLocaleString() : firstVal}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{cols[0]}</div>
+          <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, fontWeight: 500 }}>{cols[0]}</div>
         </div>
       ) : (
         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No data returned</div>
@@ -185,34 +188,34 @@ function AIChatPanel({ dashboardData, onClose }) {
   return (
     <div style={{
       position: "fixed", right: 24, bottom: 24, width: 380, maxHeight: "70vh",
-      background: "var(--bg-card, #1e293b)", border: "1px solid var(--border, rgba(255,255,255,0.1))",
-      borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-      display: "flex", flexDirection: "column", zIndex: 200,
+      background: "var(--surface, #ffffff)", border: "1px solid var(--border)",
+      borderRadius: 16, boxShadow: "0 20px 60px rgba(8,31,92,0.25)",
+      display: "flex", flexDirection: "column", zIndex: 200, overflow: "hidden"
     }}>
       {/* Header */}
-      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "14px 16px", background: "var(--surface-elevated, #F7F2EB)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Bot size={18} color="#6366f1" />
-          <strong style={{ fontSize: 14 }}>Ask about this dashboard</strong>
+          <Bot size={18} color="var(--primary)" />
+          <strong style={{ fontSize: 14, color: "var(--text-heading)" }}>Ask about this dashboard</strong>
         </div>
         <button className="btn btn-secondary btn-sm btn-icon" onClick={onClose}><X size={14} /></button>
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10, background: "var(--bg)" }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
             alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-            background: msg.role === "user" ? "#6366f1" : "var(--bg-hover, rgba(255,255,255,0.06))",
-            color: msg.role === "user" ? "#fff" : "var(--text-body)",
-            padding: "8px 12px", borderRadius: 12, fontSize: 13,
-            maxWidth: "88%", lineHeight: 1.5,
+            background: msg.role === "user" ? "var(--primary)" : "var(--primary-light)",
+            color: msg.role === "user" ? "#ffffff" : "var(--text-heading)",
+            padding: "9px 14px", borderRadius: 12, fontSize: 13, fontWeight: 500,
+            maxWidth: "88%", lineHeight: 1.5, boxShadow: "0 2px 6px rgba(8,31,92,0.06)",
           }}>
             {msg.text}
           </div>
         ))}
         {loading && (
-          <div style={{ alignSelf: "flex-start", padding: "8px 12px", background: "var(--bg-hover)", borderRadius: 12 }}>
+          <div style={{ alignSelf: "flex-start", padding: "8px 12px", background: "var(--primary-light)", borderRadius: 12 }}>
             <Spinner />
           </div>
         )}
@@ -242,6 +245,7 @@ function AIChatPanel({ dashboardData, onClose }) {
 /* ── Main Page ───────────────────────────────────────────────── */
 export default function KPIDashboardPage() {
   const { toast }    = useToast();
+  const { isAdmin }  = useAuth();
   const [tiles,      setTiles]      = useState([]);
   const [results,    setResults]    = useState({});   // tile_id → result
   const [loading,    setLoading]    = useState(true);
@@ -309,7 +313,7 @@ export default function KPIDashboardPage() {
           <div>
             <h2 className="page-title">KPI Dashboard</h2>
             <p className="page-subtitle">
-              Configure key performance indicators and run AI-powered analysis on live data.
+              Configure key performance indicators and view live data across your organisation.
             </p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -319,14 +323,16 @@ export default function KPIDashboardPage() {
             <button className="btn btn-secondary" onClick={runAll} disabled={running || !tiles.length} id="run-all-btn">
               {running ? <><Spinner /> Running…</> : <><Play size={14} /> Run All</>}
             </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => { setEditTile(null); setShowForm(true); }}
-              disabled={tiles.length >= 8}
-              id="add-tile-btn"
-            >
-              <Plus size={14} /> Add Tile
-            </button>
+            {isAdmin && (
+              <button
+                className="btn btn-primary"
+                onClick={() => { setEditTile(null); setShowForm(true); }}
+                disabled={tiles.length >= 8}
+                id="add-tile-btn"
+              >
+                <Plus size={14} /> Add Tile
+              </button>
+            )}
           </div>
         </div>
 
@@ -337,9 +343,11 @@ export default function KPIDashboardPage() {
             <div className="empty-state-icon"><BarChart2 size={48} /></div>
             <h3>No KPI tiles yet</h3>
             <p>Add tiles with SQL queries to build your custom dashboard.</p>
-            <button className="btn btn-primary" onClick={() => setShowForm(true)} id="first-tile-btn">
-              <Plus size={14} /> Add Your First Tile
-            </button>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => setShowForm(true)} id="first-tile-btn">
+                <Plus size={14} /> Add Your First Tile
+              </button>
+            )}
           </div>
         )}
 
@@ -359,6 +367,7 @@ export default function KPIDashboardPage() {
                   result={results[tile.id] || null}
                   onDelete={deleteTile}
                   onEdit={openEdit}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>

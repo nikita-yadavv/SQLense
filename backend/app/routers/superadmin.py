@@ -143,6 +143,46 @@ def update_profile(
     return {"message": "Profile updated successfully.", "name": sa.name}
 
 
+# ── GET /superadmin/users ───────────────────────────────────────────────────────
+@router.get("/users")
+def list_all_users(
+    db: Session = Depends(get_db),
+    _: dict = Depends(get_superadmin),
+):
+    """
+    List all platform users across organisations with details, roles, and activity.
+    Security: Strictly accessible only to authenticated SuperAdmins.
+    No passwords or customer data are exposed.
+    """
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    org_map = {
+        str(o.org_id): o.organization_name
+        for o in db.query(OrgDbConfig).all()
+    }
+
+    result = []
+    for u in users:
+        query_count = db.query(func.count(QueryHistory.id)).filter(
+            QueryHistory.user_id == u.id
+        ).scalar() or 0
+
+        role_str = u.role.value if hasattr(u.role, "value") else str(u.role)
+        status_str = u.status.value if hasattr(u.status, "value") else str(u.status)
+
+        result.append({
+            "id":                str(u.id),
+            "org_id":            str(u.org_id) if u.org_id else None,
+            "organization_name": org_map.get(str(u.org_id), "Independent / No Org"),
+            "name":              u.name,
+            "email":             u.email,
+            "role":              role_str,
+            "status":            status_str,
+            "created_at":        u.created_at.isoformat() if u.created_at else None,
+            "total_queries":     query_count,
+        })
+    return result
+
+
 # ── GET /superadmin/orgs ────────────────────────────────────────────────────────
 @router.get("/orgs")
 def list_organisations(

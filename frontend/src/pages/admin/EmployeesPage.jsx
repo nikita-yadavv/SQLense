@@ -293,11 +293,15 @@ function JoinCodeTab() {
         </button>
       </div>
 
-      <div className="alert" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>
-        <Shield size={13} style={{ display: "inline", marginRight: 6, color: "#6366f1" }} />
-        <strong>How it works:</strong> Employees go to the <em>Sign Up</em> page,
-        select "Join with Code", enter this code, and fill in their details.
-        Their request appears in your <strong>Pending Approvals</strong> tab.
+      <div style={{
+        background: "var(--primary-xlight, #EAE2ED)", border: "1px solid var(--border)",
+        borderRadius: 10, padding: "14px 16px", fontSize: 13, color: "var(--text-heading)",
+        display: "flex", alignItems: "flex-start", gap: 10, lineHeight: 1.6
+      }}>
+        <Shield size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+        <div>
+          <strong>How it works:</strong> Employees go to the <em>Sign Up</em> page, select "Join with Code", enter this code, and fill in their details. Their request appears in your <strong>Pending Approvals</strong> tab.
+        </div>
       </div>
     </div>
   );

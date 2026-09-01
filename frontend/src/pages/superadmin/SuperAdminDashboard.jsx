@@ -27,26 +27,26 @@ import { superadminAPI, getErrorMessage } from "../../services/api";
    THEME TOKENS (inline — separate from main app CSS)
 ──────────────────────────────────────────────────────────────── */
 const T = {
-  bg:       "#0a0a1a",
-  bgCard:   "rgba(20,20,50,0.85)",
-  bgHover:  "rgba(99,102,241,0.08)",
-  border:   "rgba(99,102,241,0.18)",
-  primary:  "#6366f1",
-  accent:   "#8b5cf6",
-  success:  "#22c55e",
-  warning:  "#f59e0b",
-  danger:   "#ef4444",
-  muted:    "rgba(165,180,252,0.55)",
-  text:     "#e0e7ff",
-  sidebar:  "rgba(15,10,40,0.98)",
-  topbar:   "rgba(15,10,40,0.92)",
+  bg:       "#FEFAFF",
+  bgCard:   "#ffffff",
+  bgHover:  "rgba(186, 167, 191, 0.12)",
+  border:   "#D7C9DB",
+  primary:  "#86728B",
+  accent:   "#BAA7BF",
+  success:  "#2d7a56",
+  warning:  "#8f5e12",
+  danger:   "#b03050",
+  muted:    "#86728B",
+  text:     "#514354",
+  sidebar:  "#EAE2ED",
+  topbar:   "rgba(255, 255, 255, 0.92)",
 };
 
 const glass = {
   background: T.bgCard,
   border: `1px solid ${T.border}`,
   borderRadius: 16,
-  backdropFilter: "blur(12px)",
+  boxShadow: "0 4px 20px rgba(134, 114, 139, 0.08)",
 };
 
 /* ────────────────────────────────────────────────────────────────
@@ -100,6 +100,7 @@ function OverviewTab({ stats, loading, onNavigate }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 10 }}>
           {[
             { label: "View Organisations", icon: <Building2 size={16} />, tab: "orgs", color: T.primary },
+            { label: "View Users",         icon: <Users size={16} />,     tab: "users", color: T.warning },
             { label: "Platform Reports",   icon: <BarChart2 size={16} />, tab: "reports", color: T.accent },
             { label: "AI Chat",            icon: <Bot size={16} />,       tab: "chat", color: T.success },
             { label: "My Profile",         icon: <User size={16} />,      tab: "profile", color: T.warning },
@@ -172,7 +173,7 @@ function OrgsTab() {
       </div>
 
       {/* Table */}
-      <div style={{ ...glass, overflow: "hidden" }}>
+      <div className="sa-table" style={{ ...glass, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -224,7 +225,7 @@ function OrgsTab() {
                   <td style={{ padding: "14px 16px" }}>
                     <strong style={{ color: T.text }}>{org.total_queries?.toLocaleString()}</strong>
                   </td>
-                  <td style={{ padding: "14px 16px", color: T.muted, fontSize: 12 }}>
+                  <td style={{ padding: "14px 16px", color: "#cbd5e1", fontSize: 12 }}>
                     {org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}
                   </td>
                 </tr>
@@ -237,6 +238,211 @@ function OrgsTab() {
         </div>
       </div>
       <div style={{ marginTop: 10, fontSize: 12, color: T.muted }}>{filtered.length} of {orgs.length} organisations</div>
+    </div>
+  );
+}
+
+
+/* ────────────────────────────────────────────────────────────────
+   USERS TAB (Platform-Wide User Directory)
+──────────────────────────────────────────────────────────────── */
+function UsersTab() {
+  const [users,   setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState("");
+  const [search,  setSearch]  = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    superadminAPI.users()
+      .then(({ data }) => setUsers(data))
+      .catch(err => setError(getErrorMessage(err)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ padding: 60, textAlign: "center" }}><Spinner /></div>;
+  if (error)   return <p style={{ color: T.danger }}>{error}</p>;
+
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    const matchSearch = (u.name || "").toLowerCase().includes(q) ||
+                        (u.email || "").toLowerCase().includes(q) ||
+                        (u.organization_name || "").toLowerCase().includes(q);
+    const matchRole   = roleFilter === "all" || u.role === roleFilter;
+    const matchStatus = statusFilter === "all" || u.status === statusFilter;
+    return matchSearch && matchRole && matchStatus;
+  });
+
+  const totalAdmins    = users.filter(u => u.role === "admin").length;
+  const totalEmployees = users.filter(u => u.role === "employee").length;
+  const activeCount    = users.filter(u => u.status === "active").length;
+
+  return (
+    <div>
+      {/* Top summary cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14, marginBottom: 20 }}>
+        <div style={{ ...glass, padding: "14px 18px", borderLeft: `3px solid ${T.primary}` }}>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>TOTAL USERS</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: T.text, marginTop: 4 }}>{users.length}</div>
+        </div>
+        <div style={{ ...glass, padding: "14px 18px", borderLeft: `3px solid ${T.warning}` }}>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>ADMINISTRATORS</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: T.warning, marginTop: 4 }}>{totalAdmins}</div>
+        </div>
+        <div style={{ ...glass, padding: "14px 18px", borderLeft: `3px solid ${T.accent}` }}>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>EMPLOYEES</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: T.accent, marginTop: 4 }}>{totalEmployees}</div>
+        </div>
+        <div style={{ ...glass, padding: "14px 18px", borderLeft: `3px solid ${T.success}` }}>
+          <div style={{ fontSize: 11, color: T.muted, fontWeight: 600 }}>ACTIVE STATUS</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: T.success, marginTop: 4 }}>{activeCount}</div>
+        </div>
+      </div>
+
+      {/* Filter and search bar */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 16, alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ position: "relative", width: 320, maxWidth: "100%" }}>
+          <Search size={15} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: T.muted }} />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search users, email, organisation…"
+            style={{
+              width: "100%", boxSizing: "border-box",
+              background: T.bgCard, border: `1px solid ${T.border}`,
+              borderRadius: 8, padding: "9px 12px 9px 36px",
+              color: T.text, fontSize: 13, outline: "none",
+            }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: T.muted }}>
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {/* Role select */}
+          <select
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+            style={{
+              background: T.bgCard, border: `1px solid ${T.border}`,
+              color: T.text, borderRadius: 8, padding: "8px 12px",
+              fontSize: 13, outline: "none", cursor: "pointer",
+            }}
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admins only</option>
+            <option value="employee">Employees only</option>
+          </select>
+
+          {/* Status select */}
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            style={{
+              background: T.bgCard, border: `1px solid ${T.border}`,
+              color: T.text, borderRadius: 8, padding: "8px 12px",
+              fontSize: 13, outline: "none", cursor: "pointer",
+            }}
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Users table */}
+      <div className="sa-table" style={{ ...glass, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                {["User Details", "Organisation", "Role", "Status", "Queries Run", "Registered"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: T.muted, fontWeight: 700, fontSize: 11, letterSpacing: 0.5, whiteSpace: "nowrap" }}>
+                    {h.toUpperCase()}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: 36, textAlign: "center", color: T.muted }}>
+                    No users match the search and filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((u, i) => (
+                  <tr key={u.id} style={{
+                    borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : "none",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = T.bgHover}
+                  onMouseLeave={e => e.currentTarget.style.background = ""}
+                  >
+                    <td style={{ padding: "14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: "50%",
+                          background: u.role === "admin" ? `linear-gradient(135deg, ${T.primary}, ${T.accent})` : "rgba(255,255,255,0.08)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0,
+                        }}>
+                          {(u.name || "U")[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "#ffffff", fontSize: 14 }}>{u.name}</div>
+                          <div style={{ fontSize: 12, color: "#94a3b8" }}>{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "14px 16px" }}>
+                      <div style={{ fontWeight: 600, color: "#f8fafc" }}>{u.organization_name}</div>
+                      {u.org_id && (
+                        <div style={{ fontSize: 10, color: T.muted, fontFamily: "monospace" }}>
+                          {u.org_id.slice(0, 8)}…
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "14px 16px" }}>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        background: u.role === "admin" ? `${T.primary}20` : `${T.accent}20`,
+                        color: u.role === "admin" ? T.primary : T.accent,
+                        padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                      }}>
+                        {u.role === "admin" ? <Shield size={12} /> : <User size={12} />}
+                        {u.role ? (u.role.charAt(0).toUpperCase() + u.role.slice(1)) : "User"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "14px 16px" }}>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        background: u.status === "active" ? `${T.success}18` : u.status === "pending" ? `${T.warning}18` : `${T.danger}18`,
+                        color: u.status === "active" ? T.success : u.status === "pending" ? T.warning : T.danger,
+                        padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                      }}>
+                        {u.status === "active" ? <Check size={11} /> : <AlertCircle size={11} />}
+                        {u.status ? (u.status.charAt(0).toUpperCase() + u.status.slice(1)) : "Unknown"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "14px 16px" }}>
+                      <strong style={{ color: "#ffffff", fontSize: 14 }}>{u.total_queries ?? 0}</strong>
+                    </td>
+                    <td style={{ padding: "14px 16px", color: "#cbd5e1", fontSize: 12 }}>
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -591,6 +797,7 @@ function ProfileTab() {
 const TABS = [
   { id: "overview", label: "Overview",       icon: <LayoutDashboard size={18} /> },
   { id: "orgs",     label: "Organisations",  icon: <Building2 size={18} /> },
+  { id: "users",    label: "Users",          icon: <Users size={18} /> },
   { id: "reports",  label: "Reports",        icon: <BarChart2 size={18} /> },
   { id: "chat",     label: "AI Chat",        icon: <Bot size={18} /> },
   { id: "profile",  label: "Profile",        icon: <User size={18} /> },
@@ -634,7 +841,7 @@ export default function SuperAdminDashboard() {
             <div style={{ fontSize: 26 }}>🛡️</div>
             <div>
               <div style={{ fontWeight: 900, fontSize: 15, color: T.primary, letterSpacing: -0.5 }}>SQLense</div>
-              <div style={{ fontSize: 10, color: T.muted, letterSpacing: 1 }}>SUPERADMIN PORTAL</div>
+              <div style={{ fontSize: 10, color: T.muted, letterSpacing: 1 }}>ADMIN PORTAL</div>
             </div>
           </div>
         </div>
@@ -735,6 +942,7 @@ export default function SuperAdminDashboard() {
         <div style={{ padding: "28px 32px", maxWidth: 1100, margin: "0 auto" }}>
           {activeTab === "overview"  && <OverviewTab stats={stats} loading={statsLoading} onNavigate={setActiveTab} />}
           {activeTab === "orgs"      && <OrgsTab />}
+          {activeTab === "users"     && <UsersTab />}
           {activeTab === "reports"   && <ReportsTab />}
           {activeTab === "chat"      && <AIChatTab />}
           {activeTab === "profile"   && <ProfileTab />}

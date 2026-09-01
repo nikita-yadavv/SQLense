@@ -2048,7 +2048,7 @@ tbody tr:last-child td {
 
 .profile-avatar-circle {
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary-dark);
   color: white;
   display: flex;
   align-items: center;
@@ -2311,7 +2311,7 @@ tbody tr:last-child td {
   color: var(--primary);
   line-height: 1;
   margin-bottom: 12px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary-dark);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2391,7 +2391,7 @@ tbody tr:last-child td {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--primary-dark);
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -2547,4 +2547,418 @@ tbody tr:last-child td {
 
 .welcome-prompt-card:hover .welcome-prompt-sparkle {
   opacity: 1;
+}
+/* ============================================================
+   SQLense — Custom Palette Visual Appeal & Polish
+   ============================================================ */
+
+.card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: var(--shadow-md) !important;
+  transition: var(--transition) !important;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg) !important;
+  border-color: var(--border) !important;
+}
+
+.btn-primary {
+  background: var(--primary-dark) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(134, 114, 139, 0.25) !important;
+  transition: var(--transition) !important;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 18px rgba(81, 67, 84, 0.30) !important;
+}
+
+.btn-secondary {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-body) !important;
+  transition: var(--transition) !important;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--primary-light) !important;
+  border-color: var(--primary-ring) !important;
+  color: var(--primary-dark) !important;
+}
+
+.sidebar {
+  background: var(--sidebar-bg) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+.menu-item.active {
+  background: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: 0 2px 8px rgba(134, 114, 139, 0.12) !important;
+  font-weight: 600 !important;
+}
+
+.menu-item:hover:not(.active) {
+  background: rgba(234, 226, 237, 0.6) !important;
+  color: var(--text-heading) !important;
+}
+
+.welcome-prompt-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: var(--transition) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.welcome-prompt-card:hover {
+  border-color: var(--primary-ring) !important;
+  background: var(--primary-light) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.form-input, .search-bar input {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-body) !important;
+  transition: var(--transition) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.form-input:focus, .search-bar input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(134, 114, 139, 0.20) !important;
+}
+
+.stat-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: var(--transition) !important;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-md) !important;
+  border-color: var(--border) !important;
+}
+
+.sql-box {
+  background: var(--code-bg) !important;
+  border: 1px solid var(--code-border) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.bot-message {
+  border-radius: var(--radius-lg) !important;
+}
+
+.user-message {
+  background: var(--primary-dark) !important;
+  color: #ffffff !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 12px rgba(134, 114, 139, 0.20) !important;
+}
+
+
+/* ============================================================
+   SQLense — Luxury Royal & Midnight Theme Refinements
+   (Matching Reference Design: Midnight Navy Sidebar + Porcelain Canvas)
+   ============================================================ */
+
+/* ── Sidebar Midnight Theme ─────────────────────────────────── */
+.sidebar {
+  background: #081F5C !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar .logo,
+.sidebar .logo span,
+.logo-text,
+.sidebar-logo {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-family: var(--font-heading) !important;
+  letter-spacing: -0.02em !important;
+}
+
+.new-chat-btn {
+  background: #2563EB !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+  border: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.new-chat-btn:hover {
+  background: #1D4ED8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
+}
+
+.sidebar .nav-section-label,
+.sidebar-section-toggle,
+.sidebar-section-toggle span {
+  color: #8EA4D2 !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  opacity: 1 !important;
+}
+
+.sidebar-section-toggle svg {
+  color: #8EA4D2 !important;
+}
+
+.sidebar .menu-item {
+  color: #D0E3FF !important;
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
+  border-radius: 12px !important;
+  transition: all 0.15s ease !important;
+  padding: 10px 14px !important;
+}
+
+.sidebar .menu-item svg {
+  color: #BAD6EB !important;
+  transition: all 0.15s ease !important;
+}
+
+.sidebar .menu-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.sidebar .menu-item:hover:not(.active) svg {
+  color: #ffffff !important;
+}
+
+.sidebar .menu-item.active {
+  background: #2563EB !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
+.sidebar .menu-item.active svg {
+  color: #ffffff !important;
+}
+
+.recent-chat-item {
+  color: #D0E3FF !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+}
+
+.recent-chat-title {
+  color: #D0E3FF !important;
+  font-weight: 500 !important;
+  font-size: 12.5px !important;
+}
+
+.recent-chat-time,
+.recent-chat-icon {
+  color: #7096D1 !important;
+}
+
+.recent-chat-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.recent-chat-item:hover .recent-chat-title {
+  color: #ffffff !important;
+}
+
+.db-table-name {
+  color: #D0E3FF !important;
+  font-weight: 500 !important;
+  font-size: 12.5px !important;
+}
+
+.db-table-rows,
+.db-table-icon,
+.db-table-schema-icon {
+  color: #7096D1 !important;
+}
+
+.db-table-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.db-table-item:hover .db-table-name {
+  color: #ffffff !important;
+}
+
+/* ── Sidebar Profile Footer ─────────────────────────────────── */
+.bottom-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar .sidebar-footer,
+.sidebar .user-profile-footer,
+.sidebar-footer,
+.bottom-section .profile-item {
+  background: #F7F2EB !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 14px !important;
+  color: #081F5C !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+  padding: 10px 12px !important;
+}
+
+.sidebar .user-profile-footer .user-name,
+.bottom-section .user-name {
+  color: #081F5C !important;
+  font-weight: 700 !important;
+}
+
+.sidebar .user-profile-footer .user-role,
+.bottom-section .user-role {
+  color: #64748B !important;
+  font-weight: 500 !important;
+}
+
+.bottom-section .avatar {
+  background: #2563EB !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* ── Canvas, Page & Headers ─────────────────────────────────── */
+.main-content, .page, .chat-container, .dashboard-container {
+  background: #F5EFF7 !important;
+}
+
+.page-title {
+  color: #081F5C !important;
+  font-family: var(--font-heading) !important;
+  font-weight: 800 !important;
+}
+
+.page-subtitle {
+  color: #64748B !important;
+}
+
+/* ── KPI & Stat Cards ───────────────────────────────────────── */
+.card, .stat-card, .chart-card {
+  background: #ffffff !important;
+  border: 1px solid #EDF1F6 !important;
+  box-shadow: 0 4px 16px rgba(8, 31, 92, 0.05) !important;
+  border-radius: 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+.card:hover, .stat-card:hover {
+  box-shadow: 0 8px 24px rgba(8, 31, 92, 0.08) !important;
+  border-color: #D0E3FF !important;
+}
+
+.card h4 {
+  color: #081F5C !important;
+  font-weight: 700 !important;
+  font-family: var(--font-heading) !important;
+}
+
+/* Large numbers in KPI cards */
+.kpi-tile-value,
+.card div[style*="fontSize: 30"],
+.card div[style*="font-size: 30"],
+.card div[style*="fontSize: 32"],
+.card div[style*="font-size: 32"] {
+  color: #081F5C !important;
+  font-family: var(--font-heading) !important;
+  font-weight: 800 !important;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn-primary {
+  background: #2563EB !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1D4ED8 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+}
+
+.btn-secondary {
+  background: #EDF4FF !important;
+  color: #1E40AF !important;
+  border: 1px solid #D0E3FF !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #D0E3FF !important;
+  color: #081F5C !important;
+}
+
+#open-kpi-chat-btn {
+  background: #081F5C !important;
+  color: #ffffff !important;
+  border-radius: 50px !important;
+  box-shadow: 0 4px 16px rgba(8, 31, 92, 0.25) !important;
+}
+
+#open-kpi-chat-btn:hover {
+  background: #1E40AF !important;
+}
+
+/* ── Tables & Data Grid ─────────────────────────────────────── */
+.main-content table, .page table, .result-table, .admin-table {
+  background: #ffffff !important;
+}
+
+.main-content table th, .page table th, .result-table th, .admin-table th {
+  background: #EDF1F6 !important;
+  color: #081F5C !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #E2E8F0 !important;
+}
+
+.main-content table td, .page table td, .result-table td, .admin-table td {
+  border-bottom: 1px solid #EDF1F6 !important;
+  color: #1E293B !important;
+}
+
+.main-content table tbody tr:hover, .page table tbody tr:hover, .result-table tr:hover {
+  background: #F8FAFC !important;
+}
+
+/* ── SuperAdmin Dark Tables ─────────────────────────────────── */
+.sa-table, .sa-table table {
+  background: rgba(18, 18, 48, 0.95) !important;
+}
+
+.sa-table th, .sa-table table th {
+  background: rgba(30, 25, 75, 0.9) !important;
+  color: #a5b4fc !important;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+.sa-table td, .sa-table table td {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.15) !important;
+  color: #f1f5f9 !important;
+}
+
+.sa-table tbody tr:hover, .sa-table table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.12) !important;
 }
