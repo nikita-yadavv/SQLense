@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   UserPlus, Users, Clock, Copy, CheckCircle2, XCircle,
-  RefreshCw, Key, Shield,
+  RefreshCw, Key, Shield, Trash2, AlertTriangle,
 } from "lucide-react";
 import Layout    from "../../components/Layout";
 import Spinner   from "../../components/Spinner";
@@ -32,11 +32,73 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+/* ── Delete Confirmation Modal ──────────────────────────────── */
+function DeleteConfirmModal({ employee, onConfirm, onCancel, loading }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
+    }}>
+      <div style={{
+        background: "var(--bg, #fff)", borderRadius: 16,
+        padding: "32px 28px", maxWidth: 420, width: "90%",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+        border: "1px solid var(--border)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: "50%",
+            background: "rgba(239,68,68,0.1)", display: "flex",
+            alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}>
+            <AlertTriangle size={20} color="#ef4444" />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-heading)" }}>
+              Delete Employee Account
+            </h3>
+          </div>
+        </div>
+        <p style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.6, margin: "0 0 8px" }}>
+          Are you sure you want to permanently delete <strong>{employee?.name}</strong>?
+        </p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, margin: "0 0 24px" }}>
+          This will delete their account, all query history, saved charts, and audit records.
+          <strong style={{ color: "#ef4444" }}> This cannot be undone.</strong>
+        </p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button className="btn btn-secondary" onClick={onCancel} disabled={loading} id="delete-cancel-btn">
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm} disabled={loading}
+            id="delete-confirm-btn"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "8px 18px", borderRadius: 8, border: "none",
+              background: "#ef4444", color: "#fff", fontWeight: 600,
+              fontSize: 13, cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            <Trash2 size={14} />
+            {loading ? "Deleting…" : "Yes, Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Active Employees Tab ─────────────────────────────────── */
 function ActiveEmployeesTab() {
+  const { toast }        = useToast();
   const [employees, setEmployees] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null); // employee to delete
+  const [deleting,     setDeleting]     = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -52,6 +114,21 @@ function ActiveEmployeesTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await authAPI.deleteEmployee(deleteTarget.user_id);
+      toast.success(`${deleteTarget.name}'s account has been deleted.`);
+      setEmployees(prev => prev.filter(e => e.user_id !== deleteTarget.user_id));
+      setDeleteTarget(null);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <div style={{ padding: 32, textAlign: "center" }}><Spinner /></div>;
   if (error)   return <div className="alert alert-error">{error}</div>;
   if (!employees.length)
@@ -65,6 +142,14 @@ function ActiveEmployeesTab() {
 
   return (
     <div>
+      {deleteTarget && (
+        <DeleteConfirmModal
+          employee={deleteTarget}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+          loading={deleting}
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
         <button className="btn btn-secondary btn-sm" onClick={load} id="refresh-employees-btn">
           <RefreshCw size={13} /> Refresh
@@ -79,6 +164,7 @@ function ActiveEmployeesTab() {
               <th>Total Queries</th>
               <th>Last Query</th>
               <th>Recent Questions</th>
+              <th style={{ width: 80, textAlign: "center" }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -107,6 +193,23 @@ function ActiveEmployeesTab() {
                       ))}
                     </ul>
                   ) : <span className="text-muted">No queries yet</span>}
+                </td>
+                <td style={{ textAlign: "center" }}>
+                  <button
+                    onClick={() => setDeleteTarget(emp)}
+                    title="Delete employee"
+                    id={`delete-emp-${emp.user_id}`}
+                    style={{
+                      background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                      borderRadius: 6, padding: "5px 8px", cursor: "pointer",
+                      color: "#ef4444", display: "inline-flex", alignItems: "center",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.18)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </td>
               </tr>
             ))}

@@ -21,16 +21,16 @@ def _get_conn_str(org_id, db: Session) -> str:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                "No database connection configured for your organisation. "
-                "Please ask your admin to configure it via POST /api/database/connect."
+                "Your organisation's database hasn't been set up yet. "
+                "Please ask your admin to connect a database from the Database settings page."
             ),
         )
     if config.connection_status != "connected":
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "The organisation database is currently disconnected. "
-                "Please ask your admin to reconnect via POST /api/database/connect."
+                "The database connection is currently unavailable. "
+                "Please ask your admin to reconnect from the Database settings page."
             ),
         )
     return build_conn_str_from_config(config)

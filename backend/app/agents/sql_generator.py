@@ -1,8 +1,10 @@
 """
 SQL Generator Agent
 ────────────────────
-Takes a natural-language question + schema string and calls the local Ollama
-LLM (qwen2.5:3b) to produce a raw SQL SELECT statement.
+Takes a natural-language question/prompt + schema string and calls the local
+Ollama LLM to produce SQL statements.
+- generate_sql: for Chat (SELECT only)
+- generate_crud_sql: for SQL Workspace (SELECT, INSERT, UPDATE, DELETE, DDL)
 """
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
@@ -53,12 +55,51 @@ SQL QUERY:
 PLAIN ENGLISH EXPLANATION:""",
 )
 
+_CRUD_SQL_PROMPT = PromptTemplate(
+    input_variables=["schema", "prompt"],
+    template="""You are an expert PostgreSQL database engineer and administrator.
+Given the database schema below, write a single, valid PostgreSQL statement that satisfies the user's request.
+The request can be ANY CRUD operation:
+- SELECT (query records, aggregation, filters, joins)
+- INSERT (insert new rows into tables)
+- UPDATE (update existing rows with appropriate WHERE clauses)
+- DELETE (delete rows with appropriate WHERE clauses)
+- CREATE TABLE / ALTER TABLE / DROP TABLE (schema modifications)
+
+RULES:
+- Output ONLY the raw SQL with no markdown, no code fences, no extra commentary.
+- Use only valid table and column names from the schema below (or valid PostgreSQL names if creating a new table).
+- For INSERT statements, specify explicit column lists.
+- For UPDATE and DELETE statements, always include a safe WHERE clause matching the user's condition.
+- Use proper PostgreSQL syntax and data types.
+
+DATABASE SCHEMA:
+{schema}
+
+USER REQUEST:
+{prompt}
+
+SQL STATEMENT:""",
+)
+
+_CRUD_EXPLAIN_PROMPT = PromptTemplate(
+    input_variables=["sql", "prompt"],
+    template="""You are an expert PostgreSQL engineer. Explain what the following SQL statement does in 1-2 clear, concise sentences.
+Highlight the table affected and the main action (insert, update, delete, query, etc.).
+
+USER REQUEST: {prompt}
+
+SQL STATEMENT:
+{sql}
+
+PLAIN ENGLISH EXPLANATION:""",
+)
+
 
 def generate_sql(question: str, schema_str: str) -> str:
-    """Call the LLM and return the raw SQL string."""
+    """Call the LLM and return the raw SQL SELECT string."""
     chain = _SQL_PROMPT | _llm
     result = chain.invoke({"schema": schema_str, "question": question})
-    # Strip any accidental markdown fences the model might add
     sql = result.strip()
     for fence in ["```sql", "```SQL", "```", "`"]:
         sql = sql.replace(fence, "")
@@ -69,3 +110,40 @@ def explain_sql(sql: str, question: str) -> str:
     """Ask the LLM to explain the SQL in plain English."""
     chain = _EXPLAIN_PROMPT | _llm
     return chain.invoke({"sql": sql, "question": question}).strip()
+
+
+def generate_crud_sql(prompt: str, schema_str: str) -> tuple[str, str, str]:
+    """
+    Generate any CRUD SQL statement (SELECT, INSERT, UPDATE, DELETE, etc.)
+    and return (sql, explanation, operation_type).
+    """
+    chain = _CRUD_SQL_PROMPT | _llm
+    result = chain.invoke({"schema": schema_str, "prompt": prompt})
+    sql = result.strip()
+    for fence in ["```sql", "```SQL", "```", "`"]:
+        sql = sql.replace(fence, "")
+    sql = sql.strip()
+
+    # Determine operation type
+    first_word = sql.split()[0].upper() if sql.split() else "QUERY"
+    if first_word in {"SELECT", "WITH", "EXPLAIN", "SHOW"}:
+        op_type = "SELECT"
+    elif first_word == "INSERT":
+        op_type = "INSERT"
+    elif first_word == "UPDATE":
+        op_type = "UPDATE"
+    elif first_word == "DELETE":
+        op_type = "DELETE"
+    elif first_word in {"CREATE", "ALTER", "DROP", "TRUNCATE"}:
+        op_type = "SCHEMA"
+    else:
+        op_type = first_word
+
+    # Generate explanation
+    try:
+        explain_chain = _CRUD_EXPLAIN_PROMPT | _llm
+        explanation = explain_chain.invoke({"sql": sql, "prompt": prompt}).strip()
+    except Exception:
+        explanation = f"Executes a {op_type} operation on the database."
+
+    return sql, explanation, op_type

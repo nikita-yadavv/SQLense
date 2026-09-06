@@ -313,3 +313,110 @@ def _get_org_employee(user_id: str, current_admin: User, db: Session) -> User:
         raise HTTPException(status_code=403, detail="This user does not belong to your organisation.")
     return employee
 
+
+
+# ── DELETE /auth/admin/employee/{user_id} ─────────────────────────────────────
+@router.delete("/admin/employee/{user_id}", status_code=200)
+def delete_employee(
+    user_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(_admin_dep),
+):
+    """
+    Admin: permanently delete an employee's account and ALL related records.
+    Cascades: query_history, audit_logs, saved_charts.
+    Cannot delete another admin.
+    """
+    from app.models.query_history import QueryHistory
+    from app.models.audit_log import AuditLog
+    from app.models.saved_chart import SavedChart
+
+    employee = _get_org_employee(user_id, current_user, db)
+
+    if employee.role == UserRole.admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot delete another admin account using this endpoint."
+        )
+
+    emp_name  = employee.name
+    emp_email = employee.email
+
+    # Cascade delete all related records
+    db.query(QueryHistory).filter(QueryHistory.user_id == employee.id).delete()
+    db.query(SavedChart).filter(SavedChart.user_id == employee.id).delete()
+    db.query(AuditLog).filter(AuditLog.user_id == employee.id).delete()
+    db.delete(employee)
+    db.commit()
+
+    log_action(db, "EMPLOYEE_DELETED", org_id=current_user.org_id, user_id=current_user.id,
+               detail=f"Admin deleted employee: {emp_email}", request=request)
+
+    return {"message": f"{emp_name} ({emp_email}) and all their data have been permanently deleted."}
+
+
+# ── DELETE /auth/me/account ────────────────────────────────────────────────────
+@router.delete("/me/account", status_code=200)
+def delete_my_account(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Self-deletion endpoint available to both admins and employees.
+
+    Admin rules:
+      - Can only delete their own account if they have NO active/pending employees
+        in the organisation. If employees exist, they must be removed first.
+      - When an admin self-deletes, ALL org data is also deleted:
+          org_db_config, kpi_tiles, audit_logs, query_history, saved_charts
+          for the entire org, then the admin user row.
+
+    Employee rules:
+      - Can delete their own account anytime.
+      - Cascades: own query_history, audit_logs, saved_charts.
+    """
+    from app.models.query_history import QueryHistory
+    from app.models.audit_log import AuditLog
+    from app.models.saved_chart import SavedChart
+    from app.models.kpi_tile import KPITile
+    from app.models.org_db_config import OrgDbConfig
+
+    if current_user.role == UserRole.admin:
+        # Check for remaining employees
+        remaining = db.query(User).filter(
+            User.org_id == current_user.org_id,
+            User.role == UserRole.employee,
+            User.id != current_user.id,
+        ).count()
+
+        if remaining > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"You have {remaining} employee(s) in your organisation. "
+                    "Please remove all employees before deleting your admin account."
+                )
+            )
+
+        org_id = current_user.org_id
+
+        # Cascade delete ALL org data
+        db.query(QueryHistory).filter(QueryHistory.org_id == org_id).delete()
+        db.query(SavedChart).filter(SavedChart.org_id == org_id).delete()
+        db.query(AuditLog).filter(AuditLog.org_id == org_id).delete()
+        db.query(KPITile).filter(KPITile.org_id == org_id).delete()
+        db.query(OrgDbConfig).filter(OrgDbConfig.org_id == org_id).delete()
+        db.delete(current_user)
+        db.commit()
+
+    else:
+        # Employee self-delete
+        db.query(QueryHistory).filter(QueryHistory.user_id == current_user.id).delete()
+        db.query(SavedChart).filter(SavedChart.user_id == current_user.id).delete()
+        db.query(AuditLog).filter(AuditLog.user_id == current_user.id).delete()
+        db.delete(current_user)
+        db.commit()
+
+    return {"message": "Your account and all associated data have been permanently deleted."}

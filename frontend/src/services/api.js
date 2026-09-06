@@ -51,6 +51,8 @@ export const authAPI = {
   getJoinCode:    ()     => api.get("/auth/admin/join-code"),
   me:             ()     => api.get("/auth/me"),
   updateMe:       (data) => api.put("/auth/me", data),
+  deleteEmployee: (id)   => api.delete(`/auth/admin/employee/${id}`),
+  deleteMyAccount: ()    => api.delete("/auth/me/account"),
 };
 
 // ── Saved Charts ───────────────────────────────────────────
@@ -68,6 +70,7 @@ export const dbAPI = {
   getStatus:  ()     => api.get("/api/database/status"),
   getConfig:  ()     => api.get("/api/database/config"),
   disconnect: ()     => api.delete("/api/database/disconnect"),
+  listTables: ()     => api.get("/api/database/tables"),
 };
 
 // ── Chat ───────────────────────────────────────────────────
@@ -86,6 +89,7 @@ export const workspaceAPI = {
   execute:  (sql) => api.post("/api/admin/workspace/execute", { sql, action: "execute" }),
   commit:   ()    => api.post("/api/admin/workspace/execute", { sql: "", action: "commit" }),
   rollback: ()    => api.post("/api/admin/workspace/execute", { sql: "", action: "rollback" }),
+  generate: (prompt) => api.post("/api/admin/workspace/generate", { prompt }),
 };
 
 // ── Admin Analytics ────────────────────────────────────────
@@ -94,6 +98,11 @@ export const analyticsAPI = {
   daily:     (days=30)  => api.get("/api/admin/analytics/daily", { params: { days } }),
   auditLog:  (limit=50, offset=0) =>
     api.get("/api/admin/audit-log", { params: { limit, offset } }),
+};
+
+// ── Dashboard Stats ────────────────────────────────────────
+export const dashboardAPI = {
+  stats: () => api.get("/api/dashboard/stats"),
 };
 
 // ── KPI Tiles ──────────────────────────────────────────────

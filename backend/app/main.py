@@ -70,3 +70,8 @@ app.include_router(analytics.router,    prefix="/admin",          tags=["Admin -
 
 app.include_router(kpi.router,          prefix="/api/admin",      tags=["Admin - KPI"])
 app.include_router(kpi.router,          prefix="/admin",          tags=["Admin - KPI Legacy"])
+
+# Dashboard stats available to all authenticated users (not just admins)
+# Route: GET /api/dashboard/stats
+from app.routers import analytics as _analytics_module
+app.include_router(_analytics_module.router, prefix="/api", tags=["Dashboard"])

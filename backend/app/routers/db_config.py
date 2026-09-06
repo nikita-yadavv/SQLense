@@ -312,3 +312,46 @@ def get_db_config(
         connection_status=config.connection_status,
         last_connected_at=config.last_connected_at,
     )
+
+# ── GET /api/database/tables ───────────────────────────────────────────────────
+@router.get("/tables")
+def list_database_tables(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # all authenticated users
+):
+    """
+    Return all tables in the org's connected database with their row counts.
+    Available to all authenticated users (admin + employee).
+    Used by the sidebar to display real database tables.
+    """
+    from sqlalchemy import create_engine, inspect, text as sa_text
+    from app.services.db_connection import build_conn_str_from_config
+
+    config = _get_config_or_404(current_user.org_id, db)
+
+    if config.connection_status != "connected":
+        return []
+
+    try:
+        conn_str = build_conn_str_from_config(config)
+        engine = create_engine(conn_str, pool_pre_ping=True)
+        try:
+            inspector = inspect(engine)
+            table_names = inspector.get_table_names()
+            result = []
+            with engine.connect() as conn:
+                for table in table_names:
+                    try:
+                        row = conn.execute(
+                            sa_text(f'SELECT COUNT(*) FROM "{table}"')
+                        ).scalar()
+                        row_count = row or 0
+                    except Exception:
+                        row_count = 0
+                    result.append({"name": table, "rows": row_count})
+            return result
+        finally:
+            engine.dispose()
+    except Exception as exc:
+        # Return empty list gracefully instead of crashing
+        return []

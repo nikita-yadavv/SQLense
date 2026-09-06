@@ -1,18 +1,95 @@
 /**
  * Message — renders a single chat message bubble.
- * Handles both user messages and rich bot responses
- * (answer text, SQL, SQL explanation, charts with toggle/save, result table).
+ * Handles user messages, rich bot responses, high-contrast SQL view, and friendly error cards.
  */
 import { useState } from "react";
-import { BarChart2, Bookmark, Check, Eye, EyeOff } from "lucide-react";
+import { BarChart2, Bookmark, Check, Eye, EyeOff, AlertCircle, Database, Settings, Terminal, Copy } from "lucide-react";
 import ChartRenderer from "./ChartRenderer";
 import ResultTable   from "./ResultTable";
 import { savedChartsAPI, getErrorMessage } from "../services/api";
 import { useToast } from "../context/ToastContext";
 
+// Map common backend error patterns to friendly messages + hints
+function parseFriendlyError(rawMsg) {
+  if (!rawMsg) return { title: "Something went wrong", hint: "Please try again in a moment.", icon: "⚠️" };
+
+  const msg = rawMsg.toLowerCase();
+
+  if (msg.includes("database") && (msg.includes("unavailable") || msg.includes("disconnected") || msg.includes("reconnect"))) {
+    return {
+      title: "Database Unavailable",
+      hint: "The connected database is temporarily offline. Please ask your admin to reconnect from the Database settings page.",
+      icon: "🔌",
+    };
+  }
+  if (msg.includes("not been set up") || msg.includes("hasn't been set up") || msg.includes("not configured") || msg.includes("configure")) {
+    return {
+      title: "No Database Connected",
+      hint: "Your organisation doesn't have a database connected yet. Ask your admin to set one up from the Database settings.",
+      icon: "🗄️",
+    };
+  }
+  if (msg.includes("select") || msg.includes("write") || msg.includes("insert") || msg.includes("update") || msg.includes("delete")) {
+    return {
+      title: "Query Not Allowed",
+      hint: "For security, only read queries (SELECT) are permitted. Try rephrasing your question.",
+      icon: "🔒",
+    };
+  }
+  if (msg.includes("timeout") || msg.includes("timed out")) {
+    return {
+      title: "Query Timed Out",
+      hint: "The query took too long to run. Try a more specific question or a smaller date range.",
+      icon: "⏱️",
+    };
+  }
+  if (msg.includes("network") || msg.includes("connection refused") || msg.includes("fetch")) {
+    return {
+      title: "Connection Error",
+      hint: "Unable to reach the server. Please check your internet connection and try again.",
+      icon: "📡",
+    };
+  }
+  if (msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden")) {
+    return {
+      title: "Session Expired",
+      hint: "Your session has expired. Please refresh the page and log in again.",
+      icon: "🔐",
+    };
+  }
+  // Generic fallback
+  return {
+    title: "Couldn't Process Your Request",
+    hint: "Something went wrong while processing your query. Please try rephrasing or try again.",
+    icon: "⚠️",
+  };
+}
+
+function CopySqlButton({ sql }) {
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    if (!sql) return;
+    navigator.clipboard.writeText(sql);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      type="button"
+      className="sql-copy-btn"
+      title="Copy SQL to clipboard"
+    >
+      {copied ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+      <span>{copied ? "Copied!" : "Copy SQL"}</span>
+    </button>
+  );
+}
+
 export default function Message({
   type,
   text,
+  isError,
   sql,
   sqlExplanation,
   answerText,
@@ -25,6 +102,7 @@ export default function Message({
   const [showChart, setShowChart] = useState(true);
   const [saved, setSaved]         = useState(false);
   const [saving, setSaving]       = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   if (type === "user") {
     return (
@@ -34,11 +112,50 @@ export default function Message({
     );
   }
 
+  // ── Error Card ──────────────────────────────────────────────────────────────
+  if (isError) {
+    const { title, hint, icon } = parseFriendlyError(text);
+    return (
+      <div className="message-wrapper bot">
+        <div className="bot-message" style={{ padding: 0, background: "none", boxShadow: "none" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 14,
+            padding: "16px 20px",
+            background: "linear-gradient(135deg, rgba(239,68,68,0.07) 0%, rgba(239,68,68,0.03) 100%)",
+            border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 12,
+            maxWidth: 480,
+          }}>
+            <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>{icon}</span>
+            <div>
+              <p style={{
+                fontWeight: 600,
+                fontSize: 14,
+                color: "var(--text-primary)",
+                margin: "0 0 6px 0",
+              }}>{title}</p>
+              <p style={{
+                fontSize: 13,
+                color: "var(--text-muted)",
+                margin: 0,
+                lineHeight: 1.5,
+              }}>{hint}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Normal bot message ──────────────────────────────────────────────────────
   const hasChart = chart && chart.type && chart.type !== "none" && chart.type !== "table" && chart.data?.length > 0;
 
   async function handleSaveChart() {
     if (!hasChart || saved || saving) return;
     setSaving(true);
+    setSaveError("");
     try {
       await savedChartsAPI.save({
         title: chart.title || userQuestion || "Chart Visualization",
@@ -48,9 +165,9 @@ export default function Message({
         chart_data: chart.data,
       });
       setSaved(true);
-      toast.success("Chart saved to Saved Charts!");
+      toast.success("Chart saved!");
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      setSaveError("Could not save chart. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -75,7 +192,11 @@ export default function Message({
         {sql && (
           <div className="sql-box">
             <div className="sql-box-header">
-              <h4>Generated SQL</h4>
+              <h4>
+                <Terminal size={13} style={{ marginRight: 6 }} />
+                Generated SQL
+              </h4>
+              <CopySqlButton sql={sql} />
             </div>
             <pre>{sql}</pre>
           </div>
@@ -106,9 +227,14 @@ export default function Message({
               id="save-chart-btn"
             >
               {saved ? <Check size={13} /> : <Bookmark size={13} />}
-              {saved ? "Saved" : saving ? "Saving…" : "Save Chart"}
+              {saved ? "Saved!" : saving ? "Saving…" : "Save Chart"}
             </button>
           </div>
+        )}
+
+        {/* Inline save error (no toast) */}
+        {saveError && (
+          <p style={{ fontSize: 12, color: "var(--error, #ef4444)", marginTop: 4 }}>{saveError}</p>
         )}
 
         {/* Chart (bar / line / pie) */}

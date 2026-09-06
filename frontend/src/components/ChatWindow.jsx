@@ -17,6 +17,7 @@ import { getMockAIResponse, SUGGESTED_PROMPTS } from "../data/mockData";
 
 const MOCK_MODE = import.meta.env.VITE_MOCK_AUTH === "true";
 const PENDING_KEY = "sqlense_pending_query";
+const AUTO_QUERY_KEY = "sqlense_auto_query";
 
 export default function ChatWindow({ messages, setMessages }) {
   const [input,   setInput]   = useState("");
@@ -25,33 +26,9 @@ export default function ChatWindow({ messages, setMessages }) {
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
-  }, [input]);
-
-  // On mount: if there's a pending query (user navigated away mid-response), re-fire it
-  useEffect(() => {
-    const pending = localStorage.getItem(PENDING_KEY);
-    if (pending && !loading) {
-      localStorage.removeItem(PENDING_KEY);
-      // Small delay to let component fully mount
-      setTimeout(() => fireQuery(pending), 300);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // ── Query Execution ──────────────────────────────────────────────────────────
   const fireQuery = useCallback(async (q) => {
     setLoading(true);
-    // Store as pending in case user navigates away
     localStorage.setItem(PENDING_KEY, q);
 
     if (MOCK_MODE) {
@@ -79,16 +56,16 @@ export default function ChatWindow({ messages, setMessages }) {
       ]);
     } catch (err) {
       const msg = getErrorMessage(err);
+      // Show a friendly error inside chat — no toast popup
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: `⚠️ ${msg}` },
+        { role: "bot", isError: true, text: msg },
       ]);
-      toast.error(msg);
     } finally {
       localStorage.removeItem(PENDING_KEY);
       setLoading(false);
     }
-  }, [setMessages, toast]);
+  }, [setMessages]);
 
   const sendMessage = useCallback(async (question) => {
     const q = (question || input).trim();
@@ -100,6 +77,71 @@ export default function ChatWindow({ messages, setMessages }) {
 
     await fireQuery(q);
   }, [input, loading, fireQuery, setMessages]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
+  }, [input]);
+
+  // On mount: if there's a pending query (user navigated away mid-response), re-fire it
+  useEffect(() => {
+    const pending = localStorage.getItem(PENDING_KEY);
+    if (pending && !loading) {
+      localStorage.removeItem(PENDING_KEY);
+      // Small delay to let component fully mount
+      setTimeout(() => fireQuery(pending), 300);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On mount or event: if sidebar table was clicked, auto-fire the query
+  useEffect(() => {
+    function handleAutoQuery(e) {
+      const q = typeof e.detail === "string" ? e.detail : e.detail?.pendingQuestion;
+      if (q) {
+        const userMsg = {
+          id: "auto-user-" + Date.now(),
+          role: "user",
+          text: q,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages([userMsg]);
+        setTimeout(() => fireQuery(q), 300);
+      }
+    }
+
+    window.addEventListener("sqlense:auto_query", handleAutoQuery);
+
+    const autoQuery = localStorage.getItem(AUTO_QUERY_KEY);
+    if (autoQuery) {
+      try {
+        const { pendingQuestion } = JSON.parse(autoQuery);
+        if (pendingQuestion) {
+          localStorage.removeItem(AUTO_QUERY_KEY);
+          const userMsg = {
+            id: "auto-user-" + Date.now(),
+            role: "user",
+            text: pendingQuestion,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages([userMsg]);
+          setTimeout(() => fireQuery(pendingQuestion), 400);
+        }
+      } catch {
+        localStorage.removeItem(AUTO_QUERY_KEY);
+      }
+    }
+
+    return () => window.removeEventListener("sqlense:auto_query", handleAutoQuery);
+  }, [fireQuery, setMessages]);
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -144,6 +186,7 @@ export default function ChatWindow({ messages, setMessages }) {
               key={i}
               type={msg.role}
               text={msg.text}
+              isError={msg.isError}
               sql={msg.sql}
               sqlExplanation={msg.sqlExplanation}
               answerText={msg.answerText}

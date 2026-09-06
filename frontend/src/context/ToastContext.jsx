@@ -29,7 +29,7 @@ export function ToastProvider({ children }) {
 
   const toast = {
     success: (msg, title = "Success") => addToast({ type: "success", title, message: msg }),
-    error:   (msg, title = "Error")   => addToast({ type: "error",   title, message: msg }),
+    error:   (msg, title = "Something went wrong") => addToast({ type: "error", title, message: typeof msg === 'string' && msg.length > 100 ? msg.slice(0, 97) + '…' : msg }),
     info:    (msg, title = "Info")    => addToast({ type: "info",    title, message: msg }),
     warning: (msg, title = "Warning") => addToast({ type: "warning", title, message: msg }),
   };

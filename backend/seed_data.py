@@ -77,7 +77,7 @@ orgs_data = [
     {
         "admin_name":    "Priya Sharma",
         "admin_email":   "admin@acme.com",
-        "admin_password": "AdminAcme@2024",
+        "admin_password": "Admin@1234",
         "org_name":      "Acme Corporation",
         "join_code":     "ACMEX7Q2",
         "employees": [
@@ -95,7 +95,7 @@ orgs_data = [
     {
         "admin_name":    "Vivek Anand",
         "admin_email":   "admin@techstart.com",
-        "admin_password": "AdminTech@2024",
+        "admin_password": "Admin@1234",
         "org_name":      "TechStart Inc",
         "join_code":     "TECHK9P4",
         "employees": [
@@ -156,7 +156,7 @@ for org_data in orgs_data:
         emp = User(
             name=emp_data["name"],
             email=emp_data["email"],
-            hashed_password=hash_password("Employee@2024"),
+            hashed_password=hash_password("Employee@1234"),
             role=UserRole.employee,
             status=emp_data["status"],
             org_id=admin.id,
@@ -224,10 +224,10 @@ for org_data in orgs_data:
 
 print("\n🎉 Seed complete!")
 print("\nCredentials:")
-print("  Admin 1:    admin@acme.com       / AdminAcme@2024")
-print("  Admin 2:    admin@techstart.com  / AdminTech@2024")
-print("  Employees:  *@acme.com, *@techstart.com / Employee@2024")
-print("  SuperAdmin: superadmin@sqlense.dev / SuperAdmin@2024!  (env-based, not in DB)")
+print("  Admin 1:    admin@acme.com       / Admin@1234")
+print("  Admin 2:    admin@techstart.com  / Admin@1234")
+print("  Employees:  *@acme.com, *@techstart.com / Employee@1234")
+print("  SuperAdmin: superadmin@sqlense.dev / SuperAdmin@1234  (env-based, not in DB)")
 print("\nJoin Codes:")
 print("  Acme Corp:    ACMEX7Q2")
 print("  TechStart:    TECHK9P4")

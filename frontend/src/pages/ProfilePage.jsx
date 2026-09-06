@@ -1,9 +1,11 @@
 /**
  * ProfilePage — shows real user data from /auth/me and allows updates via PUT /auth/me.
+ * Also includes Danger Zone for account self-deletion.
  */
 import { useState } from "react";
-import { User, Mail, Building, Shield, Calendar, Save, Eye, EyeOff, Loader } from "lucide-react";
+import { User, Shield, Save, Eye, EyeOff, Loader, Trash2, AlertTriangle } from "lucide-react";
 import Layout from "../components/Layout";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { authAPI, getErrorMessage } from "../services/api";
@@ -33,15 +35,19 @@ function InfoRow({ label, value }) {
 }
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuth();
-  const { toast }            = useToast();
+  const { user, updateUser, logout, isAdmin } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const [nameVal,  setNameVal]  = useState(user?.name  || "");
+  const [nameVal, setNameVal] = useState(user?.name || "");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const [pwForm, setPwForm]     = useState({ current: "", newPw: "", confirm: "" });
-  const [showPw, setShowPw]     = useState({ current: false, newPw: false });
+  const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
+  const [showPw, setShowPw] = useState({ current: false, newPw: false });
   const [savingPw, setSavingPw] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // ── Update name ──────────────────────────────────────────────────────────────
   async function handleSaveProfile(e) {
@@ -62,7 +68,7 @@ export default function ProfilePage() {
   // ── Change password ──────────────────────────────────────────────────────────
   async function handleSavePassword(e) {
     e.preventDefault();
-    if (!pwForm.current)       { toast.error("Enter your current password."); return; }
+    if (!pwForm.current) { toast.error("Enter your current password."); return; }
     if (pwForm.newPw.length < 8) { toast.error("New password must be at least 8 characters."); return; }
     if (pwForm.newPw !== pwForm.confirm) { toast.error("Passwords do not match."); return; }
     setSavingPw(true);
@@ -74,6 +80,26 @@ export default function ProfilePage() {
       toast.error(getErrorMessage(err));
     } finally {
       setSavingPw(false);
+    }
+  }
+
+  // ── Delete account ───────────────────────────────────────────────────────────
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    try {
+      await authAPI.deleteMyAccount();
+      logout();
+      navigate("/login", { replace: true });
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      if (msg.toLowerCase().includes("employee")) {
+        toast.error(msg, "Cannot Delete Account");
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
+      setShowDeleteModal(false);
+    } finally {
+      setDeletingAccount(false);
     }
   }
 
@@ -107,12 +133,12 @@ export default function ProfilePage() {
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   marginTop: 12, padding: "4px 14px", borderRadius: 20,
-                  background: user?.role === "admin" ? "rgba(99,102,241,0.12)" : "rgba(16,185,129,0.12)",
-                  color: user?.role === "admin" ? "var(--primary)" : "#10b981",
+                  background: isAdmin ? "rgba(99,102,241,0.12)" : "rgba(16,185,129,0.12)",
+                  color: isAdmin ? "var(--primary)" : "#10b981",
                   fontSize: 12, fontWeight: 700,
                 }}>
                   <Shield size={11} />
-                  {user?.role === "admin" ? "Admin" : "Employee"}
+                  {isAdmin ? "Admin" : "Employee"}
                 </div>
               </div>
 
@@ -121,11 +147,11 @@ export default function ProfilePage() {
                 <h4 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 700, color: "var(--text-heading)" }}>
                   Account Details
                 </h4>
-                <InfoRow label="User ID"      value={user?.id ? user.id.slice(0, 16) + "…" : "—"} />
-                <InfoRow label="Email"        value={user?.email} />
-                <InfoRow label="Role"         value={user?.role} />
+                <InfoRow label="User ID" value={user?.id ? user.id.slice(0, 16) + "…" : "—"} />
+                <InfoRow label="Email" value={user?.email} />
+                <InfoRow label="Role" value={user?.role} />
                 <InfoRow label="Organisation" value={user?.organization_name} />
-                <InfoRow label="Status"       value={user?.status} />
+                <InfoRow label="Status" value={user?.status} />
                 <InfoRow label="Member since" value={joinDate} />
               </div>
             </div>
@@ -173,8 +199,8 @@ export default function ProfilePage() {
                 </h4>
                 <form onSubmit={handleSavePassword}>
                   {[
-                    { key: "current", label: "Current Password",  id: "pw-current" },
-                    { key: "newPw",   label: "New Password",      id: "pw-new" },
+                    { key: "current", label: "Current Password", id: "pw-current" },
+                    { key: "newPw", label: "New Password", id: "pw-new" },
                     { key: "confirm", label: "Confirm New Password", id: "pw-confirm" },
                   ].map(({ key, label, id }) => (
                     <div className="form-group" key={key} style={{ marginBottom: 16, position: "relative" }}>
@@ -188,7 +214,8 @@ export default function ProfilePage() {
                         placeholder="••••••••"
                         style={{ paddingRight: 40 }}
                       />
-                      <button type="button"
+                      <button
+                        type="button"
                         onClick={() => setShowPw((p) => ({ ...p, [key]: !p[key] }))}
                         style={{ position: "absolute", right: 10, bottom: 10, background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
                         tabIndex={-1}
@@ -204,7 +231,106 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* ── Delete Account ── */}
+          <div style={{ marginTop: 24 }}>
+            <div className="card" style={{ borderColor: "rgba(239,68,68,0.3)" }}>
+              <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#ef4444", display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={16} /> Danger Zone
+              </h4>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
+                {isAdmin
+                  ? "Permanently delete your admin account and all organisation data. You must remove all employees first."
+                  : "Permanently delete your account and all your query history, saved charts, and data."}
+              </p>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                id="delete-account-btn"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "8px 16px", borderRadius: 8,
+                  border: "1px solid rgba(239,68,68,0.4)",
+                  background: "rgba(239,68,68,0.06)", color: "#ef4444",
+                  fontWeight: 600, fontSize: 13, cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
+              >
+                <Trash2 size={14} /> Delete My Account
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Delete Account Confirmation Modal */}
+        {showDeleteModal && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
+          }}>
+            <div style={{
+              background: "var(--bg, #fff)", borderRadius: 16,
+              padding: "32px 28px", maxWidth: 440, width: "90%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              border: "1px solid var(--border)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: "50%",
+                  background: "rgba(239,68,68,0.1)", display: "flex",
+                  alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  <Trash2 size={22} color="#ef4444" />
+                </div>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-heading)" }}>
+                  Delete Your Account
+                </h3>
+              </div>
+              <p style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.6, margin: "0 0 8px" }}>
+                You are about to permanently delete your account.
+              </p>
+              {isAdmin ? (
+                <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, margin: "0 0 6px" }}>
+                  This will delete your admin account, the organisation's database config, all KPI tiles, and all associated data.
+                </p>
+              ) : (
+                <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, margin: "0 0 6px" }}>
+                  All your query history, saved charts, and audit records will also be deleted.
+                </p>
+              )}
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#ef4444", margin: "0 0 24px" }}>
+                This action is permanent and cannot be undone.
+              </p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deletingAccount}
+                  id="delete-modal-cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  id="delete-modal-confirm"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "8px 18px", borderRadius: 8, border: "none",
+                    background: "#ef4444", color: "#fff", fontWeight: 600,
+                    fontSize: 13, cursor: deletingAccount ? "not-allowed" : "pointer",
+                    opacity: deletingAccount ? 0.7 : 1,
+                  }}
+                >
+                  <Trash2 size={14} />
+                  {deletingAccount ? "Deleting…" : "Yes, Delete My Account"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

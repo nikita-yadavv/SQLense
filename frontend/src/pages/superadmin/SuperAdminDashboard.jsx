@@ -24,29 +24,31 @@ import Spinner from "../../components/Spinner";
 import { superadminAPI, getErrorMessage } from "../../services/api";
 
 /* ────────────────────────────────────────────────────────────────
-   THEME TOKENS (inline — separate from main app CSS)
+   THEME TOKENS — Luminous Glassmorphism Luxury Theme
 ──────────────────────────────────────────────────────────────── */
 const T = {
-  bg:       "#FEFAFF",
-  bgCard:   "#ffffff",
-  bgHover:  "rgba(186, 167, 191, 0.12)",
-  border:   "#D7C9DB",
-  primary:  "#86728B",
-  accent:   "#BAA7BF",
-  success:  "#2d7a56",
-  warning:  "#8f5e12",
-  danger:   "#b03050",
-  muted:    "#86728B",
-  text:     "#514354",
-  sidebar:  "#EAE2ED",
-  topbar:   "rgba(255, 255, 255, 0.92)",
+  bg:       "radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 45%), radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.08) 0px, transparent 45%), #f8fafc",
+  bgCard:   "rgba(255, 255, 255, 0.85)",
+  bgHover:  "rgba(99, 102, 241, 0.08)",
+  border:   "rgba(226, 232, 240, 0.9)",
+  primary:  "#4f46e5",
+  accent:   "#7c3aed",
+  success:  "#10b981",
+  warning:  "#f59e0b",
+  danger:   "#ef4444",
+  muted:    "#64748b",
+  text:     "#0f172a",
+  sidebar:  "rgba(255, 255, 255, 0.9)",
+  topbar:   "rgba(255, 255, 255, 0.85)",
 };
 
 const glass = {
-  background: T.bgCard,
-  border: `1px solid ${T.border}`,
-  borderRadius: 16,
-  boxShadow: "0 4px 20px rgba(134, 114, 139, 0.08)",
+  background: "rgba(255, 255, 255, 0.85)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  border: "1px solid rgba(255, 255, 255, 0.95)",
+  borderRadius: 18,
+  boxShadow: "0 10px 30px -5px rgba(99, 102, 241, 0.08), 0 0 0 1px rgba(99, 102, 241, 0.05), 0 2px 5px rgba(0, 0, 0, 0.02)",
 };
 
 /* ────────────────────────────────────────────────────────────────
@@ -395,13 +397,13 @@ function UsersTab() {
                           {(u.name || "U")[0]?.toUpperCase()}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, color: "#ffffff", fontSize: 14 }}>{u.name}</div>
-                          <div style={{ fontSize: 12, color: "#94a3b8" }}>{u.email}</div>
+                          <div style={{ fontWeight: 700, color: T.text, fontSize: 14 }}>{u.name}</div>
+                          <div style={{ fontSize: 12, color: T.muted }}>{u.email}</div>
                         </div>
                       </div>
                     </td>
                     <td style={{ padding: "14px 16px" }}>
-                      <div style={{ fontWeight: 600, color: "#f8fafc" }}>{u.organization_name}</div>
+                      <div style={{ fontWeight: 600, color: T.text }}>{u.organization_name}</div>
                       {u.org_id && (
                         <div style={{ fontSize: 10, color: T.muted, fontFamily: "monospace" }}>
                           {u.org_id.slice(0, 8)}…

@@ -65,9 +65,9 @@ This creates 2 sample organisations, admins, employees, query history, and KPI t
 
 | Role | Email | Password |
 |---|---|---|
-| Admin (Acme Corp) | `admin@acme.com` | `AdminAcme@2024` |
-| Admin (TechStart) | `admin@techstart.com` | `AdminTech@2024` |
-| Employee | `emp1@acme.com` | `Employee@2024` |
+| Admin (Acme Corp) | `admin@acme.com` | `Admin@1234` |
+| Admin (TechStart) | `admin@techstart.com` | `Admin@1234` |
+| Employee | `emp1@acme.com` | `Employee@1234` |
 | SuperAdmin | Set during `register_superadmin.py` | — |
 
 ---

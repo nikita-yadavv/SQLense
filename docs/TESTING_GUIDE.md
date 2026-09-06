@@ -139,18 +139,18 @@ SQLense features an editorial Luxury Royal & Midnight color palette (`index.css`
 
 | Role | Email | Password | Org | Status |
 |---|---|---|---|---|
-| Admin | `admin@acme.com` | `AdminAcme@2024` | Acme Corporation | Active |
-| Admin | `admin@techstart.com` | `AdminTech@2024` | TechStart Inc | Active |
-| Employee | `rohit@acme.com` | `Employee@2024` | Acme Corporation | Active |
-| Employee | `sneha@acme.com` | `Employee@2024` | Acme Corporation | Active |
-| Employee | `ananya@techstart.com` | `Employee@2024` | TechStart Inc | Active |
-| Employee | `meera@techstart.com` | `Employee@2024` | TechStart Inc | **Pending** |
+| Admin | `admin@acme.com` | `Admin@1234` | Acme Corporation | Active |
+| Admin | `admin@techstart.com` | `Admin@1234` | TechStart Inc | Active |
+| Employee | `rohit@acme.com` | `Employee@1234` | Acme Corporation | Active |
+| Employee | `sneha@acme.com` | `Employee@1234` | Acme Corporation | Active |
+| Employee | `ananya@techstart.com` | `Employee@1234` | TechStart Inc | Active |
+| Employee | `meera@techstart.com` | `Employee@1234` | TechStart Inc | **Pending** |
 
 ### SuperAdmin (Login at `/superadmin/login`)
 
 | Email | Password | Role |
 |---|---|---|
-| `superadmin@sqlense.dev` | `SuperAdmin@2024!` | SuperAdmin |
+| `superadmin@sqlense.dev` | `SuperAdmin@1234` | SuperAdmin |
 
 ---
 
@@ -176,7 +176,7 @@ This automatically builds:
 
 **URL:** http://localhost:5173/superadmin/login
 
-1. Login with `superadmin@sqlense.dev` / `SuperAdmin@2024!`
+1. Login with `superadmin@sqlense.dev` / `SuperAdmin@1234`
 2. **Overview**: View total organisations, connected databases, active users, and system stats.
 3. **Organisations**: View org list, connection status, join codes (`ACMEX7Q2`), and user counts.
 4. **AI Chat**: Ask platform-level questions in natural language.
@@ -185,7 +185,7 @@ This automatically builds:
 
 ## 7. Admin Flow
 
-**URL:** http://localhost:5173/login (`admin@acme.com` / `AdminAcme@2024`)
+**URL:** http://localhost:5173/login (`admin@acme.com` / `Admin@1234`)
 
 1. **Dashboard**: View active employees, pending approvals, and DB status.
 2. **KPI Dashboard (`/admin/kpi-dashboard`)**:
@@ -200,7 +200,7 @@ This automatically builds:
 ## 8. Employee Flow
 
 1. **Join via Code (`/signup`)**: Enter join code `ACMEX7Q2` to request access.
-2. **Login (`/login`)**: Login as `rohit@acme.com` / `Employee@2024`.
+2. **Login (`/login`)**: Login as `rohit@acme.com` / `Employee@1234`.
 3. **AI Chat (`/chat`)**: Ask questions like `"Show total revenue by month"` or `"How many products are in stock?"`.
 
 ---

@@ -2,10 +2,17 @@
 import { useToast } from "../context/ToastContext";
 
 const ICONS = {
-  success: "✅",
-  error:   "❌",
-  info:    "ℹ️",
-  warning: "⚠️",
+  success: "✓",
+  error:   "!",
+  info:    "i",
+  warning: "!",
+};
+
+const LABELS = {
+  success: "Success",
+  error:   "Notice",
+  info:    "Info",
+  warning: "Warning",
 };
 
 export default function Toast() {
@@ -22,9 +29,11 @@ export default function Toast() {
           onClick={() => removeToast(t.id)}
           role="alert"
         >
-          <span className="toast-icon">{ICONS[t.type]}</span>
+          <span className={`toast-icon-badge toast-icon-${t.type}`}>
+              {ICONS[t.type]}
+            </span>
           <div className="toast-body">
-            <div className="toast-title">{t.title}</div>
+            <div className="toast-title">{t.title || LABELS[t.type]}</div>
             {t.message && <div className="toast-message">{t.message}</div>}
           </div>
           <button className="toast-close" aria-label="Dismiss">×</button>

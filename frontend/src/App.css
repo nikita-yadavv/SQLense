@@ -2941,24 +2941,111 @@ tbody tr:last-child td {
   background: #F8FAFC !important;
 }
 
-/* ── SuperAdmin Dark Tables ─────────────────────────────────── */
+/* ── SuperAdmin Luminous Frosted Glass Tables ─────────────────────── */
 .sa-table, .sa-table table {
-  background: rgba(18, 18, 48, 0.95) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
 }
 
 .sa-table th, .sa-table table th {
-  background: rgba(30, 25, 75, 0.9) !important;
-  color: #a5b4fc !important;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.25) !important;
+  background: rgba(248, 250, 252, 0.95) !important;
+  color: #475569 !important;
+  border-bottom: 1.5px solid #e2e8f0 !important;
   font-weight: 700 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.05em !important;
 }
 
 .sa-table td, .sa-table table td {
   background: transparent !important;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.15) !important;
-  color: #f1f5f9 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
 .sa-table tbody tr:hover, .sa-table table tbody tr:hover {
-  background: rgba(99, 102, 241, 0.12) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+}
+
+/* ── Toast icon badge (replaces raw emoji) ─────────────────────────── */
+.toast-icon-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.toast-icon-success { background: rgba(16,185,129,0.15); color: #10b981; }
+.toast-icon-error   { background: rgba(239,68,68,0.12);  color: #ef4444; }
+.toast-icon-info    { background: rgba(59,130,246,0.15); color: #3b82f6; }
+.toast-icon-warning { background: rgba(245,158,11,0.15); color: #f59e0b; }
+
+
+/* ── High-Contrast SQL Box & Developer Snippet ─────────────────────── */
+.sql-box {
+  background: #0b1329 !important;
+  border: 1px solid rgba(56, 189, 248, 0.22) !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+  margin-top: 12px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22) !important;
+}
+
+.sql-box-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 10px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.sql-box h4 {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #7dd3fc !important; /* Bright sky blue heading */
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.sql-copy-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 3px 9px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.sql-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.sql-box pre {
+  color: #f8fafc !important; /* Crystal crisp high-contrast off-white */
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, Monaco, monospace !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
 }
