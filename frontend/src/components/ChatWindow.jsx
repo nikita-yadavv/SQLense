@@ -71,6 +71,11 @@ export default function ChatWindow({ messages, setMessages }) {
     const q = (question || input).trim();
     if (!q || loading) return;
 
+    // If currently viewing a historical chat URL, switch cleanly to active session /chat URL
+    if (window.location.search && (window.location.search.includes("chat_id") || window.location.search.includes("table"))) {
+      window.history.replaceState({}, '', '/chat');
+    }
+
     // Add user message immediately
     setMessages((prev) => [...prev, { role: "user", text: q }]);
     setInput("");

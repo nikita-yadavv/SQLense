@@ -121,6 +121,10 @@ export default function Sidebar({ onNewChat }) {
     navigate(`/chat?table=${encodeURIComponent(tableName)}&t=${Date.now()}`, { state: { tableQuery: question, timestamp: Date.now() } });
   }
 
+  function handleChatNavClick() {
+    window.dispatchEvent(new CustomEvent("sqlense:active_chat"));
+  }
+
   function handleNewChat() {
     localStorage.removeItem("sqlense_restore_chat");
     localStorage.removeItem("sqlense_auto_query");
@@ -180,7 +184,7 @@ export default function Sidebar({ onNewChat }) {
           <span>Dashboard</span>
         </NavLink>
 
-        <NavLink to="/chat" className={navClass} id="nav-chat">
+        <NavLink to="/chat" className={navClass} id="nav-chat" onClick={handleChatNavClick}>
           <MessageSquare size={17} />
           <span>Chat</span>
         </NavLink>
