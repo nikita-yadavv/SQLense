@@ -30,12 +30,14 @@ RULES:
 3. RANGES & BUCKETS: When the user asks for "range wise", "brackets", or "distribution" by a numeric column (e.g. "salary range wise number of employees", "price range distribution"):
    - Group into clean intervals using dynamic integer bucket expressions:
      e.g., `SELECT CONCAT((FLOOR(salary / 10000) * 10)::INT, 'k - ', ((FLOOR(salary / 10000) + 1) * 10)::INT, 'k') AS salary_range, COUNT(*) AS employee_count FROM employees GROUP BY salary_range ORDER BY MIN(salary) ASC`
-4. TIME FILTERS: Only add date/time WHERE filters IF the user's question explicitly specifies a timeframe (such as "in March", "in 2026", "last 30 days", "recent"). If no date or time period is mentioned in the question, DO NOT invent or assume date filters!
-5. POSTGRESQL SYNTAX:
+4. CASE-INSENSITIVE TEXT FILTERS:
+   In PostgreSQL, `=` on strings is strictly case-sensitive. Always use `ILIKE` (or `LOWER(column) = LOWER('value')`) for string matching so queries work regardless of capitalization (e.g. `WHERE name ILIKE 'john doe'` or `WHERE city ILIKE 'pune'` or `WHERE email ILIKE '...'`).
+5. TIME FILTERS: Only add date/time WHERE filters IF the user's question explicitly specifies a timeframe (such as "in March", "in 2026", "last 30 days", "recent"). If no date or time period is mentioned in the question, DO NOT invent or assume date filters!
+6. POSTGRESQL SYNTAX:
    - Use `EXTRACT(YEAR FROM col)` / `EXTRACT(MONTH FROM col)` for date parts.
    - Use `COALESCE(val, default)` instead of MySQL `IFNULL()`.
-6. Limit results to 500 rows unless requested otherwise.
-7. NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
+7. Limit results to 500 rows unless requested otherwise.
+8. NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
 
 DATABASE SCHEMA:
 {schema}
@@ -72,12 +74,13 @@ The request can be ANY CRUD operation:
 - CREATE TABLE / ALTER TABLE / DROP TABLE (schema modifications)
 
 RULES:
-- Output ONLY the raw SQL with no markdown, no code fences, no extra commentary.
-- Use only valid table and column names from the schema below (or valid PostgreSQL names if creating a new table).
-- For INSERT statements, specify explicit column lists.
-- For UPDATE and DELETE statements, always include a safe WHERE clause matching the user's condition.
-- Use proper PostgreSQL syntax and data types.
-- In PostgreSQL, use EXTRACT(YEAR FROM date) instead of YEAR(date) and COALESCE() instead of IFNULL().
+1. Output ONLY the raw SQL with no markdown, no code fences, no extra commentary.
+2. Use only valid table and column names from the schema below (or valid PostgreSQL names if creating a new table).
+3. For INSERT statements, specify explicit column lists.
+4. For UPDATE and DELETE statements, always include a safe WHERE clause matching the user's condition.
+5. CASE-INSENSITIVITY: In PostgreSQL, `=` on strings is strictly case-sensitive and will fail if casing does not match. ALWAYS use `ILIKE` for string filters (e.g. `WHERE name ILIKE 'john doe'` or `WHERE email ILIKE '...'` or `WHERE city ILIKE 'pune'`).
+6. Use proper PostgreSQL syntax and data types.
+7. In PostgreSQL, use EXTRACT(YEAR FROM date) instead of YEAR(date) and COALESCE() instead of IFNULL().
 
 DATABASE SCHEMA:
 {schema}

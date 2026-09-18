@@ -80,9 +80,9 @@ export default function Sidebar({ onNewChat }) {
     navigate("/login", { replace: true });
   }
 
-  // When a recent chat is clicked — restore the full conversation in chat window
-  function handleRecentChatClick(item) {
-    const messages = [
+  // When a recent chat is clicked — restore the full conversation in chat window with live table
+  async function handleRecentChatClick(item) {
+    const initialMessages = [
       {
         id: "hist-user-" + item.id,
         role: "user",
@@ -105,9 +105,40 @@ export default function Sidebar({ onNewChat }) {
         timestamp: item.created_at,
       },
     ];
-    localStorage.setItem("sqlense_restore_chat", JSON.stringify(messages));
-    window.dispatchEvent(new CustomEvent("sqlense:restore_chat", { detail: messages }));
-    navigate(`/chat?chat_id=${item.id}`, { state: { restoreMessages: messages, timestamp: Date.now() } });
+
+    localStorage.setItem("sqlense_restore_chat", JSON.stringify(initialMessages));
+    window.dispatchEvent(new CustomEvent("sqlense:restore_chat", { detail: initialMessages }));
+    navigate(`/chat?chat_id=${item.id}`, { state: { restoreMessages: initialMessages, timestamp: Date.now() } });
+
+    // Load full columns, rows and chart asynchronously
+    try {
+      const { data } = await historyAPI.getById(item.id);
+      if (data && (data.rows?.length > 0 || data.columns?.length > 0)) {
+        const fullMessages = [
+          {
+            id: "hist-user-" + data.id,
+            role: "user",
+            text: data.question,
+            userQuestion: data.question,
+            timestamp: data.created_at,
+          },
+          {
+            id: "hist-bot-" + data.id,
+            role: "bot",
+            text: data.answer_text || "Query executed.",
+            answerText: data.answer_text || "",
+            sql: data.sql_query || "",
+            sqlExplanation: data.sql_explanation || "",
+            chart: data.chart || (data.chart_type && data.chart_type !== "none" ? { type: data.chart_type } : null),
+            columns: data.columns || [],
+            rows: data.rows || [],
+            timestamp: data.created_at,
+          },
+        ];
+        localStorage.setItem("sqlense_restore_chat", JSON.stringify(fullMessages));
+        window.dispatchEvent(new CustomEvent("sqlense:restore_chat", { detail: fullMessages }));
+      }
+    } catch {}
   }
 
   // When a database table is clicked — auto-query it in chat

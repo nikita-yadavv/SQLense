@@ -3,7 +3,7 @@
  * Manages active session vs historical recent chat views:
  * - Active session messages are saved in sessionStorage under sqlense_active_chat (session-scoped).
  * - Fresh application sessions always start completely clean/empty with the welcome screen.
- * - Clicking a Recent Chat displays the historical conversation (?chat_id=...).
+ * - Clicking a Recent Chat displays the historical conversation (?chat_id=...) including table results.
  * - Clicking "Chat" in the sidebar switches back to whatever was used in the current tab session.
  * - Clicking "New Chat" clears the active session and starts fresh.
  */
@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import ChatWindow from "../components/ChatWindow";
+import { historyAPI } from "../services/api";
 
 const ACTIVE_KEY  = "sqlense_active_chat";
 const RESTORE_KEY = "sqlense_restore_chat";
@@ -75,18 +76,42 @@ export default function ChatPage() {
     if (location.state?.restoreMessages) {
       isHistoricalRef.current = true;
       setMessages(location.state.restoreMessages);
-      return;
     }
 
-    // 2. If recent chat requested via restore key
-    const restoreRaw = localStorage.getItem(RESTORE_KEY);
-    if (restoreRaw && location.search.includes("chat_id")) {
+    // 2. If recent chat requested via URL parameter ?chat_id=...
+    const params = new URLSearchParams(location.search);
+    const chatId = params.get("chat_id");
+    if (chatId) {
       isHistoricalRef.current = true;
-      localStorage.removeItem(RESTORE_KEY);
-      try {
-        setMessages(JSON.parse(restoreRaw));
-        return;
-      } catch {}
+      historyAPI.getById(chatId)
+        .then(({ data }) => {
+          if (data) {
+            const fullMessages = [
+              {
+                id: "hist-user-" + data.id,
+                role: "user",
+                text: data.question,
+                userQuestion: data.question,
+                timestamp: data.created_at,
+              },
+              {
+                id: "hist-bot-" + data.id,
+                role: "bot",
+                text: data.answer_text || "Query executed.",
+                answerText: data.answer_text || "",
+                sql: data.sql_query || "",
+                sqlExplanation: data.sql_explanation || "",
+                chart: data.chart || (data.chart_type && data.chart_type !== "none" ? { type: data.chart_type } : null),
+                columns: data.columns || [],
+                rows: data.rows || [],
+                timestamp: data.created_at,
+              },
+            ];
+            setMessages(fullMessages);
+          }
+        })
+        .catch(() => {});
+      return;
     }
 
     // 3. If navigated back to main /chat (no chat_id / table in search query)

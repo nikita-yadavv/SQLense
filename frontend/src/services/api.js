@@ -82,6 +82,8 @@ export const chatAPI = {
 export const historyAPI = {
   list: (limit = 50, offset = 0) =>
     api.get("/api/history", { params: { limit, offset } }),
+  getById: (id) =>
+    api.get(`/api/history/${id}`),
 };
 
 // ── Admin Workspace ────────────────────────────────────────
