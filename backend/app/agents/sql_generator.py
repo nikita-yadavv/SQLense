@@ -26,13 +26,16 @@ correct PostgreSQL SELECT query that directly answers the user's question.
 
 RULES:
 1. Output ONLY the raw SQL query with no explanation, no markdown, no code fences.
-2. DIRECT COLUMNS: Always inspect table columns first. If a table has a column that answers the question directly (e.g. `stock_quantity` in `products`, `salary` in `employees`, `price` in `products`, `monthly_fee` in `subscriptions`), query that column directly from the table. Do NOT do unnecessary JOINs or aggregations on other tables (like `order_items`) when the table already has the exact column.
-3. TIME FILTERS: Only add date/time WHERE filters IF the user's question explicitly specifies a timeframe (such as "in March", "in 2026", "last 30 days", "recent"). If no date or time period is mentioned in the question, DO NOT invent or assume date filters!
-4. POSTGRESQL SYNTAX:
+2. DIRECT COLUMNS: Always inspect table columns first. If a table has a column that answers the question directly (e.g. `stock_quantity` in `products`, `salary` in `employees`, `price` in `products`, `monthly_fee` in `subscriptions`), query that column directly. Do NOT do unnecessary JOINs or aggregations on other tables (like `order_items`) when the table already has the exact column.
+3. RANGES & BUCKETS: When the user asks for "range wise", "brackets", or "distribution" by a numeric column (e.g. "salary range wise number of employees", "price range distribution"):
+   - Group into clean intervals using dynamic integer bucket expressions:
+     e.g., `SELECT CONCAT((FLOOR(salary / 10000) * 10)::INT, 'k - ', ((FLOOR(salary / 10000) + 1) * 10)::INT, 'k') AS salary_range, COUNT(*) AS employee_count FROM employees GROUP BY salary_range ORDER BY MIN(salary) ASC`
+4. TIME FILTERS: Only add date/time WHERE filters IF the user's question explicitly specifies a timeframe (such as "in March", "in 2026", "last 30 days", "recent"). If no date or time period is mentioned in the question, DO NOT invent or assume date filters!
+5. POSTGRESQL SYNTAX:
    - Use `EXTRACT(YEAR FROM col)` / `EXTRACT(MONTH FROM col)` for date parts.
    - Use `COALESCE(val, default)` instead of MySQL `IFNULL()`.
-5. Limit results to 500 rows unless requested otherwise.
-6. NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
+6. Limit results to 500 rows unless requested otherwise.
+7. NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
 
 DATABASE SCHEMA:
 {schema}
