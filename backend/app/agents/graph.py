@@ -118,7 +118,7 @@ def node_insight(state: PipelineState) -> PipelineState:
     if state.get("error"):
         return state
     try:
-        answer = generate_insight(state["question"], state["columns"], state["rows"])
+        answer = generate_insight(state["question"], state["columns"], state["rows"], sql=state.get("sql", ""))
         return {**state, "answer_text": answer}
     except Exception as exc:
         return {**state, "error": f"Insight Agent failed: {exc}"}
