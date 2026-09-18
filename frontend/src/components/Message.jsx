@@ -29,11 +29,34 @@ function parseFriendlyError(rawMsg) {
       icon: "🗄️",
     };
   }
-  if (msg.includes("select") || msg.includes("write") || msg.includes("insert") || msg.includes("update") || msg.includes("delete")) {
+  // True security violation checks
+  if (
+    msg.includes("security violation") ||
+    msg.includes("blocked keyword") ||
+    msg.includes("only pure select") ||
+    msg.includes("write operation") ||
+    msg.includes("only select queries are allowed") ||
+    msg.includes("dml/ddl not allowed")
+  ) {
     return {
       title: "Query Not Allowed",
       hint: "For security, only read queries (SELECT) are permitted. Try rephrasing your question.",
       icon: "🔒",
+    };
+  }
+  // Query execution or SQL syntax error
+  if (
+    msg.includes("query execution failed") ||
+    msg.includes("syntax error") ||
+    msg.includes("psycopg.errors") ||
+    msg.includes("does not exist") ||
+    msg.includes("sql validation failed") ||
+    msg.includes("unknown table")
+  ) {
+    return {
+      title: "Couldn't Execute Query",
+      hint: "The database could not process this question with the current schema. Try rephrasing with specific table or column names.",
+      icon: "⚠️",
     };
   }
   if (msg.includes("timeout") || msg.includes("timed out")) {

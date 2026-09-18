@@ -6,6 +6,7 @@ Ollama LLM to produce SQL statements.
 - generate_sql: for Chat (SELECT only)
 - generate_crud_sql: for SQL Workspace (SELECT, INSERT, UPDATE, DELETE, DDL)
 """
+import re
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
 from app.config import get_settings
@@ -28,7 +29,12 @@ RULES:
 - Use ONLY table and column names that exist in the schema below.
 - Do NOT invent table names. Column names like 'month', 'year', 'revenue' are NOT tables — query the table where they belong (e.g., 'monthly_revenue' or 'orders').
 - In the 'monthly_revenue' table, 'month' is a VARCHAR string (e.g. 'January') and 'year' is an INTEGER (e.g. 2026).
-- When querying 'monthly_revenue', filter by year using `year = 2026` or `year = EXTRACT(YEAR FROM CURRENT_DATE)::INT`. Do NOT apply date functions like EXTRACT to the 'month' column!
+- When querying 'monthly_revenue', filter by year using year = 2026 or year = EXTRACT(YEAR FROM CURRENT_DATE)::INT. Do NOT apply date functions like EXTRACT to the 'month' column!
+- POSTGRESQL DATE SYNTAX:
+  * DO NOT use MySQL functions like YEAR(date), MONTH(date), DAY(date), or IFNULL().
+  * In PostgreSQL, extract year or month using EXTRACT(YEAR FROM date_col) or EXTRACT(MONTH FROM date_col).
+  * For month filtering: EXTRACT(MONTH FROM created_at) = 4 (for April) or EXTRACT(MONTH FROM created_at) = 3 (for March).
+  * Use COALESCE(a, b) instead of IFNULL(a, b).
 - Limit results to 500 rows unless requested otherwise.
 - NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
 
@@ -72,6 +78,7 @@ RULES:
 - For INSERT statements, specify explicit column lists.
 - For UPDATE and DELETE statements, always include a safe WHERE clause matching the user's condition.
 - Use proper PostgreSQL syntax and data types.
+- In PostgreSQL, use EXTRACT(YEAR FROM date) instead of YEAR(date) and COALESCE() instead of IFNULL().
 
 DATABASE SCHEMA:
 {schema}
@@ -96,6 +103,19 @@ PLAIN ENGLISH EXPLANATION:""",
 )
 
 
+def normalize_pg_sql(sql: str) -> str:
+    """Correct common MySQL/generic dialect hallucinations into valid PostgreSQL."""
+    # YEAR(expr) -> EXTRACT(YEAR FROM expr)
+    sql = re.sub(r'\bYEAR\s*\(\s*([^)]+)\s*\)', r'EXTRACT(YEAR FROM \1)', sql, flags=re.IGNORECASE)
+    # MONTH(expr) -> EXTRACT(MONTH FROM expr)
+    sql = re.sub(r'\bMONTH\s*\(\s*([^)]+)\s*\)', r'EXTRACT(MONTH FROM \1)', sql, flags=re.IGNORECASE)
+    # DAY(expr) -> EXTRACT(DAY FROM expr)
+    sql = re.sub(r'\bDAY\s*\(\s*([^)]+)\s*\)', r'EXTRACT(DAY FROM \1)', sql, flags=re.IGNORECASE)
+    # IFNULL(a, b) -> COALESCE(a, b)
+    sql = re.sub(r'\bIFNULL\s*\(', 'COALESCE(', sql, flags=re.IGNORECASE)
+    return sql
+
+
 def generate_sql(question: str, schema_str: str) -> str:
     """Call the LLM and return the raw SQL SELECT string."""
     chain = _SQL_PROMPT | _llm
@@ -103,7 +123,8 @@ def generate_sql(question: str, schema_str: str) -> str:
     sql = result.strip()
     for fence in ["```sql", "```SQL", "```", "`"]:
         sql = sql.replace(fence, "")
-    return sql.strip()
+    sql = sql.strip()
+    return normalize_pg_sql(sql)
 
 
 def explain_sql(sql: str, question: str) -> str:
@@ -122,7 +143,7 @@ def generate_crud_sql(prompt: str, schema_str: str) -> tuple[str, str, str]:
     sql = result.strip()
     for fence in ["```sql", "```SQL", "```", "`"]:
         sql = sql.replace(fence, "")
-    sql = sql.strip()
+    sql = normalize_pg_sql(sql.strip())
 
     # Determine operation type
     first_word = sql.split()[0].upper() if sql.split() else "QUERY"
