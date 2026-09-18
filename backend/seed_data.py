@@ -22,7 +22,7 @@ sys.path.insert(0, ".")
 
 # ── Load settings first ──────────────────────────────────────
 from dotenv import load_dotenv
-load_dotenv(".env")
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 from app.database import engine, Base, get_db
 from app.models.user import User, UserRole, UserStatus
@@ -108,6 +108,24 @@ orgs_data = [
             {"title": "Monthly Signups",  "sql": "SELECT COUNT(*) AS signups FROM users WHERE created_at >= DATE_TRUNC('month', NOW())"},
             {"title": "Total Products",   "sql": "SELECT COUNT(*) AS total_products FROM products"},
             {"title": "Avg Order Value",  "sql": "SELECT ROUND(AVG(total_amount), 2) AS avg_order_value FROM orders"},
+        ]
+    },
+    {
+        "admin_name":    "Aditi Rao",
+        "admin_email":   "admin@novamart.com",
+        "admin_password": "Admin@1234",
+        "org_name":      "NovaMart Retail",
+        "join_code":     "NOVAM8X2",
+        "employees": [
+            {"name": "Karan Malhotra", "email": "karan@novamart.com",   "status": UserStatus.active,  "queries": 15},
+            {"name": "Priya Nair",     "email": "priya.n@novamart.com", "status": UserStatus.active,  "queries": 8},
+            {"name": "Rahul Sen",      "email": "rahul.s@novamart.com", "status": UserStatus.pending, "queries": 0},
+        ],
+        "kpi_tiles": [
+            {"title": "Total Delivered Revenue", "sql": "SELECT SUM(total_amount) AS total_revenue FROM orders WHERE order_status = 'Delivered'"},
+            {"title": "Low Stock Items",         "sql": "SELECT COUNT(*) AS low_stock_items FROM products WHERE stock_quantity <= reorder_level"},
+            {"title": "Platinum Members",        "sql": "SELECT COUNT(*) AS platinum_members FROM customers WHERE loyalty_tier = 'Platinum'"},
+            {"title": "Avg Delivery Days",       "sql": "SELECT ROUND(AVG(delivery_days), 1) AS avg_delivery_days FROM orders WHERE order_status = 'Delivered'"},
         ]
     }
 ]
@@ -225,9 +243,11 @@ for org_data in orgs_data:
 print("\n🎉 Seed complete!")
 print("\nCredentials:")
 print("  Admin 1:    admin@acme.com       / Admin@1234")
-print("  Admin 2:    admin@techstart.com  / Admin@1234")
+print("  Admin 2:    admin@techstart.com  / Admin@1234
+  Admin 3 (Demo): admin@novamart.com  / Admin@1234 (Fresh DB Connection Demo)")
 print("  Employees:  *@acme.com, *@techstart.com / Employee@1234")
 print("  SuperAdmin: superadmin@sqlense.dev / SuperAdmin@1234  (env-based, not in DB)")
 print("\nJoin Codes:")
 print("  Acme Corp:    ACMEX7Q2")
-print("  TechStart:    TECHK9P4")
+print("  TechStart:    TECHK9P4
+  NovaMart:     NOVAM8X2")

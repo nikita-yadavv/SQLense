@@ -26,7 +26,7 @@ SQLense strictly separates platform metadata from tenant business data:
         │
         ├──► [Local Ollama LLM] (Schema Analysis, SQL Generation, Insights)
         │
-        └──► [Tenant Org DB] (acme_db / techstart_db - Read-only query execution)
+        └──► [Tenant Org DB] (acme_db / techstart_db / novamart_db - Read-only query execution)
 ```
 
 ---
