@@ -61,6 +61,12 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem("sqlense_token", accessToken);
     localStorage.setItem("sqlense_user",  JSON.stringify(baseUser));
+    try {
+      sessionStorage.removeItem("sqlense_active_chat");
+      localStorage.removeItem("sqlense_active_chat");
+      localStorage.removeItem("sqlense_restore_chat");
+      localStorage.removeItem("sqlense_auto_query");
+    } catch {}
     setToken(accessToken);
     setUser(baseUser);
 
@@ -93,6 +99,12 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     localStorage.removeItem("sqlense_token");
     localStorage.removeItem("sqlense_user");
+    try {
+      sessionStorage.removeItem("sqlense_active_chat");
+      localStorage.removeItem("sqlense_active_chat");
+      localStorage.removeItem("sqlense_restore_chat");
+      localStorage.removeItem("sqlense_auto_query");
+    } catch {}
     setToken(null);
     setUser(null);
   }, []);

@@ -1,9 +1,10 @@
 /**
  * ChatPage — wraps ChatWindow inside the shared Layout.
  * Manages active session vs historical recent chat views:
- * - Active session messages are saved in localStorage under sqlense_active_chat.
+ * - Active session messages are saved in sessionStorage under sqlense_active_chat (session-scoped).
+ * - Fresh application sessions always start completely clean/empty with the welcome screen.
  * - Clicking a Recent Chat displays the historical conversation (?chat_id=...).
- * - Clicking "Chat" in the sidebar switches back to the active session.
+ * - Clicking "Chat" in the sidebar switches back to whatever was used in the current tab session.
  * - Clicking "New Chat" clears the active session and starts fresh.
  */
 import { useState, useEffect, useRef } from "react";
@@ -15,12 +16,17 @@ const ACTIVE_KEY  = "sqlense_active_chat";
 const RESTORE_KEY = "sqlense_restore_chat";
 const AUTO_KEY    = "sqlense_auto_query";
 
+// Purge any old stale localStorage active chat from previous persistent runs
+try {
+  localStorage.removeItem(ACTIVE_KEY);
+} catch {}
+
 export default function ChatPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const isHistoricalRef = useRef(false);
 
-  // Initialize messages based on route state or storage
+  // Initialize messages based on route state or session storage
   const [messages, setMessages] = useState(() => {
     try {
       if (location.state?.restoreMessages) {
@@ -33,8 +39,8 @@ export default function ChatPage() {
         localStorage.removeItem(RESTORE_KEY);
         return JSON.parse(restoreRaw);
       }
-      // If regular /chat without chat_id param, load active session
-      const activeRaw = localStorage.getItem(ACTIVE_KEY);
+      // If regular /chat without chat_id param, load current tab session chat if any
+      const activeRaw = sessionStorage.getItem(ACTIVE_KEY);
       if (activeRaw) {
         return JSON.parse(activeRaw);
       }
@@ -56,9 +62,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!isHistoricalRef.current && Array.isArray(messages)) {
       if (messages.length > 0) {
-        localStorage.setItem(ACTIVE_KEY, JSON.stringify(messages));
+        sessionStorage.setItem(ACTIVE_KEY, JSON.stringify(messages));
       } else {
-        localStorage.removeItem(ACTIVE_KEY);
+        sessionStorage.removeItem(ACTIVE_KEY);
       }
     }
   }, [messages]);
@@ -86,7 +92,7 @@ export default function ChatPage() {
     // 3. If navigated back to main /chat (no chat_id / table in search query)
     if (!location.search || (!location.search.includes("chat_id") && !location.search.includes("table"))) {
       isHistoricalRef.current = false;
-      const activeRaw = localStorage.getItem(ACTIVE_KEY);
+      const activeRaw = sessionStorage.getItem(ACTIVE_KEY);
       if (activeRaw) {
         try {
           setMessages(JSON.parse(activeRaw));
@@ -110,7 +116,7 @@ export default function ChatPage() {
 
     function handleActiveChat() {
       isHistoricalRef.current = false;
-      const activeRaw = localStorage.getItem(ACTIVE_KEY);
+      const activeRaw = sessionStorage.getItem(ACTIVE_KEY);
       if (activeRaw) {
         try {
           setMessages(JSON.parse(activeRaw));
@@ -124,6 +130,7 @@ export default function ChatPage() {
 
     function handleNew() {
       isHistoricalRef.current = false;
+      sessionStorage.removeItem(ACTIVE_KEY);
       localStorage.removeItem(ACTIVE_KEY);
       localStorage.removeItem(RESTORE_KEY);
       localStorage.removeItem(AUTO_KEY);
@@ -143,6 +150,7 @@ export default function ChatPage() {
 
   function startNewChat() {
     isHistoricalRef.current = false;
+    sessionStorage.removeItem(ACTIVE_KEY);
     localStorage.removeItem(ACTIVE_KEY);
     localStorage.removeItem(RESTORE_KEY);
     localStorage.removeItem(AUTO_KEY);
