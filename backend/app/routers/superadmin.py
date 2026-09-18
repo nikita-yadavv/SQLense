@@ -302,61 +302,81 @@ def superadmin_chat(
 ):
     """
     SuperAdmin AI chat — answers questions about the platform.
-    Only accesses the Platform DB, never any org's database.
+    Direct, precise responses regarding platform infrastructure, organizations, and user accounts.
+    Strict tenant privacy boundary: SuperAdmin never accesses private customer records from org DBs.
     """
     question = payload.get("question", "").strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
     stats = {
-        "total_orgs":    db.query(func.count(OrgDbConfig.id)).scalar(),
+        "total_orgs":     db.query(func.count(OrgDbConfig.id)).scalar() or 0,
         "connected_orgs": db.query(func.count(OrgDbConfig.id)).filter(
             OrgDbConfig.connection_status == "connected"
-        ).scalar(),
-        "total_users":   db.query(func.count(User.id)).scalar(),
-        "active_users":  db.query(func.count(User.id)).filter(User.status == UserStatus.active).scalar(),
-        "total_queries": db.query(func.count(QueryHistory.id)).scalar(),
+        ).scalar() or 0,
+        "total_users":    db.query(func.count(User.id)).scalar() or 0,
+        "active_users":   db.query(func.count(User.id)).filter(User.status == UserStatus.active).scalar() or 0,
+        "pending_users":  db.query(func.count(User.id)).filter(User.status == UserStatus.pending).scalar() or 0,
+        "total_queries":  db.query(func.count(QueryHistory.id)).scalar() or 0,
     }
 
-    top_orgs = db.execute(
+    org_details = db.execute(
         text("""
-            SELECT o.organization_name, COUNT(q.id) as query_count
+            SELECT 
+                o.organization_name,
+                o.connection_status,
+                o.db_type,
+                COUNT(DISTINCT u.id) as user_count,
+                STRING_AGG(DISTINCT CASE WHEN u.role = 'admin' THEN u.email END, ', ') as admin_emails,
+                COUNT(DISTINCT q.id) as query_count
             FROM org_db_configs o
+            LEFT JOIN users u ON u.org_id = o.org_id
             LEFT JOIN query_history q ON q.org_id = o.org_id
-            GROUP BY o.org_id, o.organization_name
+            GROUP BY o.org_id, o.organization_name, o.connection_status, o.db_type
             ORDER BY query_count DESC
-            LIMIT 5
         """)
     ).fetchall()
 
-    context = f"""
-You are the SQLense platform AI assistant. You have access to the following platform data:
+    org_summary_lines = []
+    for o in org_details:
+        admins = o.admin_emails or "None"
+        org_summary_lines.append(
+            f"  * {o.organization_name}: Status={o.connection_status}, DB Type={o.db_type}, "
+            f"Users={o.user_count}, Admins={admins}, AI Queries={o.query_count}"
+        )
 
-Platform Statistics:
-- Total organisations: {stats['total_orgs']}
-- Connected organisations (with DB set up): {stats['connected_orgs']}
-- Total users: {stats['total_users']}
-- Active users: {stats['active_users']}
+    prompt = f"""You are the SQLense SuperAdmin Platform AI Assistant. You answer questions strictly about platform infrastructure, organizations, users, and usage metrics.
+
+PLATFORM DATA:
+- Total organizations: {stats['total_orgs']}
+- Connected databases: {stats['connected_orgs']}
+- Total users: {stats['total_users']} (Active: {stats['active_users']}, Pending: {stats['pending_users']})
 - Total AI queries processed: {stats['total_queries']}
 
-Top 5 Most Active Organisations:
-{chr(10).join(f"  - {r.organization_name}: {r.query_count} queries" for r in top_orgs)}
+ORGANIZATION BREAKDOWN:
+{chr(10).join(org_summary_lines)}
 
-Answer the following question based on this data. Be concise and helpful.
-Question: {question}
-"""
+STRICT RESPONSE RULES:
+1. BE PRECISE AND DIRECT: Give clear, factual answers in 1-2 direct sentences. Do NOT ramble, apologize, or offer unprompted hypothetical suggestions.
+2. TENANT DATA PRIVACY: If the user asks for private customer data, customer lists, order records, or internal database contents of an organization (e.g. "show customers of Acme Corp", "orders in TechStart"), state directly:
+   "Customer and transactional records are stored in the organization's private database. The SuperAdmin portal only manages platform metadata, users, and usage metrics."
+3. PLATFORM METRICS & USERS: For questions about platform stats, user counts, admin emails, or query activity, state the exact facts directly.
+
+USER QUESTION: {question}
+ANSWER:"""
 
     try:
         from langchain_ollama import OllamaLLM
         from app.config import get_settings
         settings = get_settings()
-        llm = OllamaLLM(base_url=settings.ollama_base_url, model=settings.ollama_model)
-        answer = llm.invoke(context)
+        llm = OllamaLLM(base_url=settings.ollama_base_url, model=settings.ollama_model, temperature=0)
+        raw_answer = llm.invoke(prompt).strip()
+        # Clean any trailing prompt artifact if present
+        answer = raw_answer.split("USER QUESTION:")[0].strip()
     except Exception:
         answer = (
-            f"AI service is currently unavailable. "
-            f"Based on the data: There are {stats['total_orgs']} organisations "
-            f"and {stats['total_queries']} total queries on the platform."
+            f"There are {stats['total_orgs']} organizations ({stats['connected_orgs']} connected), "
+            f"{stats['total_users']} users, and {stats['total_queries']} queries processed across the platform."
         )
 
     return {"question": question, "answer": answer, "context_stats": stats}
