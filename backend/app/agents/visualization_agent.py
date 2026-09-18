@@ -4,55 +4,70 @@ Visualization Agent
 Analyses query result columns and query intent to decide the best chart type,
 or suppresses the chart (returns "table") for raw record lists, SELECT *, etc.
 
-Chart decision heuristics:
-  - Raw record lists (SELECT *, "recent entries", "list all", > 10 raw columns) → "table" (no chart)
-  - ID/UUID columns are ignored for numeric metrics
-  - 1 numeric aggregate metric + 1 categorical column → bar chart
-  - Time/date/month column + aggregated metric → line chart
-  - 1 numeric aggregate metric + 1 categorical column (≤ 8 categories) → pie chart or bar chart
-  - Otherwise → "table" (no chart)
+Key improvements:
+  - Strict distinction between Dimensions (time, categories, IDs) and Metrics (counts, revenues, totals).
+  - Time dimensions (year, month, date) and IDs are NEVER included as Y-axis metrics.
+  - Combines year + month (or formats month numbers 1-12) into human-readable X labels (e.g. "Feb 2026", "Mar 2026").
+  - Selects intuitive chart types:
+      * Counts/Registrations per month/category → "bar" (or "line" for continuous trends)
+      * Proportions / Status breakdowns (≤ 6 categories) → "pie"
+      * Rankings / comparisons → "bar"
+      * Raw row lists (SELECT *, etc.) → "table"
 """
 import re
 from datetime import date, datetime
 from decimal import Decimal
 
-_DATE_PATTERNS = re.compile(
-    r"(date|month|year|day|week|quarter|period|time)",
-    re.IGNORECASE,
-)
+_MONTH_NAMES = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
+}
 
 _ID_PATTERNS = re.compile(
     r"^(id|uuid|guid|_id)$|(_id|id)$",
     re.IGNORECASE,
 )
 
+_TIME_DIMENSIONS = {
+    "year", "month", "day", "week", "quarter", "date", "time",
+    "period", "hour", "minute", "log_date", "start_date", "end_date",
+    "joined_at", "created_at", "resolved_at", "launch_date",
+}
+
 _RAW_LIST_PATTERNS = re.compile(
-    r"\b(recent entries|latest entries|show all records|list all|all rows)\b",
+    r"\b(recent entries|latest entries|show all records|list all|all rows|which customers|who are)\b",
     re.IGNORECASE,
 )
 
 _TREND_KEYWORDS = re.compile(
-    r"\b(trend|monthly|revenue|growth|over time|daily|yearly|mrr|sales)\b",
+    r"\b(trend|growth|over time|trajectory|forecast|evolution)\b",
+    re.IGNORECASE,
+)
+
+_PIE_KEYWORDS = re.compile(
+    r"\b(proportion|share|breakdown|ratio|percentage|split|distribution)\b",
+    re.IGNORECASE,
+)
+
+_BAR_KEYWORDS = re.compile(
+    r"\b(bar|compare|comparison|top|ranking|count|number of|each month|per month|by category|by department)\b",
     re.IGNORECASE,
 )
 
 
 def _is_id_col(col_name: str) -> bool:
-    return bool(_ID_PATTERNS.search(col_name))
+    c = col_name.lower().strip()
+    return bool(_ID_PATTERNS.search(c)) or c in {"id", "uuid", "guid"}
 
 
-def _is_numeric(col_name: str, value) -> bool:
-    if _is_id_col(col_name):
-        return False
-    if isinstance(value, (int, float, Decimal)):
-        return True
-    if isinstance(value, str) and not _is_id_col(col_name):
-        return _try_float(value)
-    return False
+def _is_time_dimension(col_name: str) -> bool:
+    c = col_name.lower().strip()
+    return c in _TIME_DIMENSIONS or "date" in c or "time" in c
 
 
 def _try_float(s: str) -> bool:
-    if len(s) > 15:  # Probably a UUID or hash
+    if len(s) > 15:
         return False
     try:
         float(s)
@@ -61,93 +76,103 @@ def _try_float(s: str) -> bool:
         return False
 
 
-def _is_date_col(col_name: str, sample_value=None) -> bool:
-    if _DATE_PATTERNS.search(col_name) and not col_name.lower().endswith("by"):
+def _is_metric_column(col_name: str, sample_value) -> bool:
+    """True ONLY if the column represents a numerical measure (count, revenue, amount, etc.)."""
+    if _is_id_col(col_name) or _is_time_dimension(col_name):
+        return False
+    if isinstance(sample_value, (int, float, Decimal)):
         return True
-    if isinstance(sample_value, (date, datetime)):
-        return True
+    if isinstance(sample_value, str):
+        return _try_float(sample_value)
     return False
 
 
-def _classify_columns(columns: list[str], sample_row: dict) -> dict:
-    numeric_cols = [c for c in columns if _is_numeric(c, sample_row.get(c))]
-    date_cols = [c for c in columns if _is_date_col(c, sample_row.get(c))]
-    cat_cols = [c for c in columns if c not in numeric_cols and c not in date_cols and not _is_id_col(c)]
-    id_cols = [c for c in columns if _is_id_col(c)]
-    return {
-        "numeric": numeric_cols,
-        "date": date_cols,
-        "categorical": cat_cols,
-        "id": id_cols,
-    }
+def _format_x_label(row: dict, columns: list[str]) -> str:
+    """Generate a clean, human-readable X-axis label from the row data."""
+    col_map = {c.lower().strip(): c for c in columns}
 
-
-def _decide_chart_type(question: str, classification: dict, row_count: int, columns: list[str]) -> str:
-    num = classification["numeric"]
-    dat = classification["date"]
-    cat = classification["categorical"]
-
-    # 1. If user explicitly asks for raw list / recent entries -> table
-    if _RAW_LIST_PATTERNS.search(question) or len(columns) > 10:
-        return "table"
-
-    # 2. If no valid numeric metrics -> table
-    if not num:
-        return "table"
-
-    # 3. If trend / date / month column exists AND there's a numeric metric -> line chart
-    if (dat or cat or _TREND_KEYWORDS.search(question)) and num:
-        if "month" in cat or dat or "trend" in question.lower():
-            return "line"
-        return "bar"
-
-    # 4. Numeric metric + categorical column
-    if num and cat:
-        if row_count <= 8 and len(num) == 1:
-            return "pie"
-        return "bar"
-
-    if len(num) >= 2:
-        return "bar"
-
-    return "table"
-
-
-def _format_x_val(val) -> str:
-    if val is None:
-        return ""
-    s = str(val)
-    if len(s) > 20 and ("-" in s or ":" in s):
+    # 1. Combined Year + Month (e.g. year: 2026, month: 2 → "Feb 2026")
+    if "year" in col_map and "month" in col_map:
+        y_val = row.get(col_map["year"])
+        m_val = row.get(col_map["month"])
         try:
-            return s.split("T")[0]
+            y_int = int(float(y_val)) if y_val is not None else None
+            m_int = int(float(m_val)) if m_val is not None else None
+            m_str = _MONTH_NAMES.get(m_int, str(m_val))
+            if y_int and m_str:
+                return f"{m_str} {y_int}"
         except Exception:
             pass
-    if len(s) > 18:
-        return s[:15] + "…"
-    return s
+
+    # 2. Single month column (e.g. month: 4 → "Apr")
+    if "month" in col_map:
+        m_val = row.get(col_map["month"])
+        try:
+            m_int = int(float(m_val))
+            if m_int in _MONTH_NAMES:
+                return _MONTH_NAMES[m_int]
+        except Exception:
+            pass
+        if m_val is not None:
+            return str(m_val)[:15]
+
+    # 3. Categorical / Dimension columns (e.g. company_name, product, category, city)
+    for c in columns:
+        if not _is_id_col(c) and not _is_time_dimension(c) and not _is_metric_column(c, row.get(c)):
+            val = row.get(c)
+            if val is not None:
+                s = str(val)
+                if len(s) > 18:
+                    return s[:15] + "…"
+                return s
+
+    # 4. Date / Timestamp columns
+    for c in columns:
+        if _is_time_dimension(c):
+            val = row.get(c)
+            if val is not None:
+                s = str(val)
+                if "T" in s or "-" in s:
+                    return s.split("T")[0]
+                return s[:15]
+
+    # 5. Fallback to first non-ID column or first column
+    for c in columns:
+        if not _is_id_col(c):
+            return str(row.get(c, ""))[:15]
+
+    return str(row.get(columns[0], ""))[:15]
 
 
-def _shape_data(chart_type: str, rows: list[dict], classification: dict) -> tuple[list, str, list[str]]:
-    num = classification["numeric"]
-    dat = classification["date"]
-    cat = classification["categorical"]
+def _decide_chart_type(question: str, metric_cols: list[str], row_count: int, columns: list[str]) -> str:
+    q_lower = question.lower()
 
-    x_key = (cat or dat or num or list(rows[0].keys()))[0] if rows else ""
-    y_keys = num[:5]
+    # Raw listings or too many columns
+    if _RAW_LIST_PATTERNS.search(q_lower) or len(columns) > 8:
+        return "table"
 
-    chart_data = []
-    for row in rows:
-        raw_x = row.get(x_key, "")
-        entry = {"name": _format_x_val(raw_x)}
-        for y in y_keys:
-            raw = row.get(y, 0)
-            try:
-                entry[y] = float(raw) if raw is not None else 0
-            except (ValueError, TypeError):
-                entry[y] = 0
-        chart_data.append(entry)
+    # Must have at least one numeric metric
+    if not metric_cols or row_count < 2:
+        return "table"
 
-    return chart_data, x_key, y_keys
+    # Explicit chart requests
+    if "line" in q_lower:
+        return "line"
+    if "pie" in q_lower or (_PIE_KEYWORDS.search(q_lower) and row_count <= 8):
+        return "pie"
+    if "bar" in q_lower:
+        return "bar"
+
+    # Trend queries with continuous points
+    if _TREND_KEYWORDS.search(q_lower) and row_count >= 5:
+        return "line"
+
+    # Proportions with small cardinality
+    if _PIE_KEYWORDS.search(q_lower) and 2 <= row_count <= 6 and len(metric_cols) == 1:
+        return "pie"
+
+    # Default to clean Bar chart for discrete intervals (like months, categories, products)
+    return "bar"
 
 
 def build_chart_config(question: str, columns: list[str], rows: list[dict]) -> dict:
@@ -165,22 +190,42 @@ def build_chart_config(question: str, columns: list[str], rows: list[dict]) -> d
         return {"type": "none", "title": "", "data": [], "x_key": "", "y_keys": []}
 
     sample_row = rows[0]
-    classification = _classify_columns(columns, sample_row)
-    chart_type = _decide_chart_type(question, classification, len(rows), columns)
+    metric_cols = [c for c in columns if _is_metric_column(c, sample_row.get(c))]
 
+    # If no pure metric column detected, fallback to table
+    if not metric_cols:
+        return {
+            "type": "table",
+            "title": question,
+            "data": rows,
+            "x_key": columns[0] if columns else "",
+            "y_keys": [],
+        }
+
+    chart_type = _decide_chart_type(question, metric_cols, len(rows), columns)
     if chart_type == "table":
         return {
             "type": "table",
             "title": question,
             "data": rows,
             "x_key": columns[0] if columns else "",
-            "y_keys": columns[1:] if len(columns) > 1 else [],
+            "y_keys": [],
         }
 
-    chart_data, x_key, y_keys = _shape_data(chart_type, rows, classification)
+    y_keys = metric_cols[:4]  # Max 4 metric series for visual clarity
+    x_key = "name"
 
-    if not y_keys:
-        return {"type": "table", "title": question, "data": rows, "x_key": columns[0], "y_keys": []}
+    chart_data = []
+    for row in rows:
+        label = _format_x_label(row, columns)
+        entry = {"name": label}
+        for y in y_keys:
+            raw_val = row.get(y, 0)
+            try:
+                entry[y] = float(raw_val) if raw_val is not None else 0.0
+            except (ValueError, TypeError):
+                entry[y] = 0.0
+        chart_data.append(entry)
 
     return {
         "type": chart_type,
