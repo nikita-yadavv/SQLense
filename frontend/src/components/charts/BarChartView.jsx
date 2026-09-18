@@ -3,35 +3,53 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
-// Distinct, high-contrast color palette — each series is clearly distinguishable
-const COLORS = ["#514354", "#86728B", "#BAA7BF", "#2d7a56", "#a0650f", "#b03050"];
+const COLORS = ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
+
+function formatMetricName(name) {
+  if (!name) return "";
+  return name
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 export default function BarChartView({ title, data, yKeys }) {
   return (
     <div className="chart-wrapper">
       {title && <div className="chart-title">{title}</div>}
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 40 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data} margin={{ top: 15, right: 25, left: 10, bottom: 55 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 12, fill: "var(--text-muted)" }}
-            angle={-35}
+            tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+            angle={-25}
             textAnchor="end"
             interval={0}
+            height={50}
           />
-          <YAxis tick={{ fontSize: 12, fill: "var(--text-muted)" }} />
+          <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} allowDecimals={false} />
           <Tooltip
             contentStyle={{
-              background: "var(--bg)",
+              background: "var(--surface-elevated, #1e293b)",
               border: "1px solid var(--border)",
               borderRadius: "8px",
-              fontSize: "13px",
+              fontSize: "12px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             }}
+            formatter={(val, name) => [val, formatMetricName(name)]}
           />
-          {yKeys.length > 1 && <Legend />}
-          {yKeys.map((key, i) => (
-            <Bar key={key} dataKey={key} fill={COLORS[i % COLORS.length]} radius={[3,3,0,0]} />
+          {yKeys && yKeys.length > 1 && (
+            <Legend formatter={(val) => formatMetricName(val)} />
+          )}
+          {yKeys && yKeys.map((key, i) => (
+            <Bar
+              key={key}
+              dataKey={key}
+              name={formatMetricName(key)}
+              fill={COLORS[i % COLORS.length]}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={45}
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>

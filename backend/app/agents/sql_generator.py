@@ -22,21 +22,17 @@ _llm = OllamaLLM(
 _SQL_PROMPT = PromptTemplate(
     input_variables=["schema", "question"],
     template="""You are an expert PostgreSQL analyst. Given the database schema below, write a single,
-correct PostgreSQL SELECT query that answers the user's question.
+correct PostgreSQL SELECT query that directly answers the user's question.
 
 RULES:
-- Output ONLY the raw SQL query with no explanation, no markdown, no code fences.
-- Use ONLY table and column names that exist in the schema below.
-- Do NOT invent table names. Column names like 'month', 'year', 'revenue' are NOT tables — query the table where they belong (e.g., 'monthly_revenue' or 'orders').
-- In the 'monthly_revenue' table, 'month' is a VARCHAR string (e.g. 'January') and 'year' is an INTEGER (e.g. 2026).
-- When querying 'monthly_revenue', filter by year using year = 2026 or year = EXTRACT(YEAR FROM CURRENT_DATE)::INT. Do NOT apply date functions like EXTRACT to the 'month' column!
-- POSTGRESQL DATE SYNTAX:
-  * DO NOT use MySQL functions like YEAR(date), MONTH(date), DAY(date), or IFNULL().
-  * In PostgreSQL, extract year or month using EXTRACT(YEAR FROM date_col) or EXTRACT(MONTH FROM date_col).
-  * For month filtering: EXTRACT(MONTH FROM created_at) = 4 (for April) or EXTRACT(MONTH FROM created_at) = 3 (for March).
-  * Use COALESCE(a, b) instead of IFNULL(a, b).
-- Limit results to 500 rows unless requested otherwise.
-- NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
+1. Output ONLY the raw SQL query with no explanation, no markdown, no code fences.
+2. DIRECT COLUMNS: Always inspect table columns first. If a table has a column that answers the question directly (e.g. `stock_quantity` in `products`, `salary` in `employees`, `price` in `products`, `monthly_fee` in `subscriptions`), query that column directly from the table. Do NOT do unnecessary JOINs or aggregations on other tables (like `order_items`) when the table already has the exact column.
+3. TIME FILTERS: Only add date/time WHERE filters IF the user's question explicitly specifies a timeframe (such as "in March", "in 2026", "last 30 days", "recent"). If no date or time period is mentioned in the question, DO NOT invent or assume date filters!
+4. POSTGRESQL SYNTAX:
+   - Use `EXTRACT(YEAR FROM col)` / `EXTRACT(MONTH FROM col)` for date parts.
+   - Use `COALESCE(val, default)` instead of MySQL `IFNULL()`.
+5. Limit results to 500 rows unless requested otherwise.
+6. NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
 
 DATABASE SCHEMA:
 {schema}

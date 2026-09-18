@@ -4,14 +4,17 @@ Visualization Agent
 Analyses query result columns and query intent to decide the best chart type,
 or suppresses the chart (returns "table") for raw record lists, SELECT *, etc.
 
-Key improvements:
-  - Strict distinction between Dimensions (time, categories, IDs) and Metrics (counts, revenues, totals).
+Key capabilities:
+  - Strict distinction between Dimensions (time, categories, IDs) and Metrics (counts, revenues, stock, totals).
   - Time dimensions (year, month, date) and IDs are NEVER included as Y-axis metrics.
+  - Smart metric selection: picks the exact metric matching the user query (e.g. stock_quantity for stock questions,
+    price for price questions, revenue for revenue questions).
   - Combines year + month (or formats month numbers 1-12) into human-readable X labels (e.g. "Feb 2026", "Mar 2026").
+  - Preserves full product/item names (up to 30 chars) without harsh truncation.
   - Selects intuitive chart types:
-      * Counts/Registrations per month/category → "bar" (or "line" for continuous trends)
+      * Counts/Stock/Registrations per product/category/month → "bar"
+      * Continuous multi-period trends (≥ 5 points) → "line"
       * Proportions / Status breakdowns (≤ 6 categories) → "pie"
-      * Rankings / comparisons → "bar"
       * Raw row lists (SELECT *, etc.) → "table"
 """
 import re
@@ -51,9 +54,25 @@ _PIE_KEYWORDS = re.compile(
 )
 
 _BAR_KEYWORDS = re.compile(
-    r"\b(bar|compare|comparison|top|ranking|count|number of|each month|per month|by category|by department)\b",
+    r"\b(bar|compare|comparison|top|ranking|count|number of|each month|per month|by category|by department|stock|inventory)\b",
     re.IGNORECASE,
 )
+
+_METRIC_SYNONYMS = {
+    "stock": ["stock_quantity", "stock", "inventory", "units_available"],
+    "inventory": ["stock_quantity", "stock", "inventory"],
+    "price": ["price", "unit_price", "cost"],
+    "revenue": ["revenue", "total_amount", "mrr", "arr", "sales"],
+    "sales": ["sales", "revenue", "total_amount", "calls_count"],
+    "profit": ["profit", "net_profit"],
+    "expense": ["expenses", "expense", "costs"],
+    "salary": ["salary", "compensation"],
+    "order": ["total_orders", "order_count", "orders_count", "orders", "quantity"],
+    "customer": ["num_customers", "customer_count", "new_customers", "churned_customers", "count"],
+    "count": ["count", "num_customers", "total_orders", "quantity", "calls_count"],
+    "quantity": ["quantity", "stock_quantity", "calls_count"],
+    "fee": ["monthly_fee", "fee"],
+}
 
 
 def _is_id_col(col_name: str) -> bool:
@@ -77,7 +96,7 @@ def _try_float(s: str) -> bool:
 
 
 def _is_metric_column(col_name: str, sample_value) -> bool:
-    """True ONLY if the column represents a numerical measure (count, revenue, amount, etc.)."""
+    """True ONLY if the column represents a numerical measure (count, revenue, stock, amount, etc.)."""
     if _is_id_col(col_name) or _is_time_dimension(col_name):
         return False
     if isinstance(sample_value, (int, float, Decimal)):
@@ -85,6 +104,37 @@ def _is_metric_column(col_name: str, sample_value) -> bool:
     if isinstance(sample_value, str):
         return _try_float(sample_value)
     return False
+
+
+def _pick_best_metrics(question: str, available_metrics: list[str]) -> list[str]:
+    """Select the most relevant metric columns based on the question intent."""
+    if not available_metrics:
+        return []
+    if len(available_metrics) == 1:
+        return available_metrics
+
+    q_lower = question.lower()
+    matched = []
+
+    # 1. Direct name match in question
+    for m in available_metrics:
+        m_clean = m.lower().replace("_", " ")
+        if m.lower() in q_lower or m_clean in q_lower:
+            matched.append(m)
+
+    # 2. Match via synonym keywords
+    if not matched:
+        for word, syns in _METRIC_SYNONYMS.items():
+            if word in q_lower:
+                for m in available_metrics:
+                    if m.lower() in syns and m not in matched:
+                        matched.append(m)
+
+    if matched:
+        return matched[:3]
+
+    # If no specific metric was mentioned, avoid mixing vastly different scales (return up to 2)
+    return available_metrics[:2]
 
 
 def _format_x_label(row: dict, columns: list[str]) -> str:
@@ -114,16 +164,16 @@ def _format_x_label(row: dict, columns: list[str]) -> str:
         except Exception:
             pass
         if m_val is not None:
-            return str(m_val)[:15]
+            return str(m_val)[:28]
 
-    # 3. Categorical / Dimension columns (e.g. company_name, product, category, city)
+    # 3. Categorical / Dimension columns (e.g. name, company_name, product, category, city)
     for c in columns:
         if not _is_id_col(c) and not _is_time_dimension(c) and not _is_metric_column(c, row.get(c)):
             val = row.get(c)
             if val is not None:
                 s = str(val)
-                if len(s) > 18:
-                    return s[:15] + "…"
+                if len(s) > 30:
+                    return s[:28] + "…"
                 return s
 
     # 4. Date / Timestamp columns
@@ -134,14 +184,14 @@ def _format_x_label(row: dict, columns: list[str]) -> str:
                 s = str(val)
                 if "T" in s or "-" in s:
                     return s.split("T")[0]
-                return s[:15]
+                return s[:28]
 
     # 5. Fallback to first non-ID column or first column
     for c in columns:
         if not _is_id_col(c):
-            return str(row.get(c, ""))[:15]
+            return str(row.get(c, ""))[:28]
 
-    return str(row.get(columns[0], ""))[:15]
+    return str(row.get(columns[0], ""))[:28]
 
 
 def _decide_chart_type(question: str, metric_cols: list[str], row_count: int, columns: list[str]) -> str:
@@ -171,7 +221,7 @@ def _decide_chart_type(question: str, metric_cols: list[str], row_count: int, co
     if _PIE_KEYWORDS.search(q_lower) and 2 <= row_count <= 6 and len(metric_cols) == 1:
         return "pie"
 
-    # Default to clean Bar chart for discrete intervals (like months, categories, products)
+    # Default to clean Bar chart for discrete items (products, categories, departments, months)
     return "bar"
 
 
@@ -190,10 +240,10 @@ def build_chart_config(question: str, columns: list[str], rows: list[dict]) -> d
         return {"type": "none", "title": "", "data": [], "x_key": "", "y_keys": []}
 
     sample_row = rows[0]
-    metric_cols = [c for c in columns if _is_metric_column(c, sample_row.get(c))]
+    all_metrics = [c for c in columns if _is_metric_column(c, sample_row.get(c))]
 
     # If no pure metric column detected, fallback to table
-    if not metric_cols:
+    if not all_metrics:
         return {
             "type": "table",
             "title": question,
@@ -202,7 +252,7 @@ def build_chart_config(question: str, columns: list[str], rows: list[dict]) -> d
             "y_keys": [],
         }
 
-    chart_type = _decide_chart_type(question, metric_cols, len(rows), columns)
+    chart_type = _decide_chart_type(question, all_metrics, len(rows), columns)
     if chart_type == "table":
         return {
             "type": "table",
@@ -212,7 +262,8 @@ def build_chart_config(question: str, columns: list[str], rows: list[dict]) -> d
             "y_keys": [],
         }
 
-    y_keys = metric_cols[:4]  # Max 4 metric series for visual clarity
+    # Intelligently choose the most relevant metric series for the chart
+    y_keys = _pick_best_metrics(question, all_metrics)
     x_key = "name"
 
     chart_data = []
