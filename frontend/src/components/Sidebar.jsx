@@ -1,86 +1,80 @@
-/**
- * Sidebar — role-aware navigation with enhanced sections.
- * Includes: dashboard, recent chats (real data), database tables (real data).
- * Shows admin-only menu items only when role === "admin".
- * Clicking a recent chat restores the full conversation in chat.
- * Clicking a database table fires a SELECT query in chat.
- */
-import { useState, useEffect, useRef } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  Plus, MessageSquare, History, Database,
-  Terminal, Users, User, LogOut, Settings,
-  LayoutDashboard, BarChart2, ChevronDown, ChevronRight,
-  Table2, Shield, TrendingUp, Star, FileText, Loader2,
+  MessageSquare,
+  History,
+  Bookmark,
+  LayoutDashboard,
+  Shield,
+  Plus,
+  LogOut,
+  Sparkles,
+  ChevronDown,
+  Database,
+  Users,
+  Code2,
+  FileText,
+  Building,
 } from "lucide-react";
-import { useAuth }  from "../context/AuthContext";
-import { useToast } from "../context/ToastContext";
-import { authAPI, historyAPI, dbAPI } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { historyAPI, dbAPI } from "../services/api";
 
 export default function Sidebar({ onNewChat }) {
-  const { user, logout, isAdmin } = useAuth();
-  const { toast }   = useToast();
-  const navigate    = useNavigate();
-  const profileRef  = useRef(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [showMenu,     setShowMenu]     = useState(false);
-  const [showChats,    setShowChats]    = useState(true);
-  const [showTables,   setShowTables]   = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [recentChats, setRecentChats] = useState([]);
+  const [tables, setTables] = useState([]);
+  const [loadingChats, setLoadingChats] = useState(false);
+  const [loadingTables, setLoadingTables] = useState(false);
+  const [chatsOpen, setChatsOpen] = useState(true);
+  const [tablesOpen, setTablesOpen] = useState(true);
 
-  // Real data state
-  const [recentChats,   setRecentChats]   = useState([]);
-  const [chatsLoading,  setChatsLoading]  = useState(false);
-  const [dbTables,      setDbTables]      = useState([]);
-  const [tablesLoading, setTablesLoading] = useState(false);
-
-  // Close profile menu on outside click
+  // Fetch recent queries from /api/history (last 5)
   useEffect(() => {
-    function handleClick(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setShowMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+    let cancelled = false;
+    setLoadingChats(true);
 
-  // Fetch pending approval count for admins
-  useEffect(() => {
-    if (isAdmin) {
-      authAPI.getPending()
-        .then(({ data }) => setPendingCount(data.length))
-        .catch(() => {});
-    }
-  }, [isAdmin]);
+    historyAPI.list({ limit: 5 })
+      .then(({ data }) => {
+        if (!cancelled) {
+          const list = Array.isArray(data) ? data : data?.items || [];
+          setRecentChats(list.slice(0, 5));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setRecentChats([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingChats(false);
+      });
 
-  // Fetch recent chats from real history
-  useEffect(() => {
-    if (!showChats) return;
-    setChatsLoading(true);
-    historyAPI.list(5, 0)
-      .then(({ data }) => setRecentChats(data || []))
-      .catch(() => setRecentChats([]))
-      .finally(() => setChatsLoading(false));
-  }, [showChats]);
+    return () => { cancelled = true; };
+  }, [location.pathname, location.key]);
 
-  // Fetch real database tables when expanded
+  // Fetch real database tables
   useEffect(() => {
-    if (!showTables) return;
-    setTablesLoading(true);
+    let cancelled = false;
+    setLoadingTables(true);
+
     dbAPI.listTables()
-      .then(({ data }) => setDbTables(data || []))
-      .catch(() => setDbTables([]))
-      .finally(() => setTablesLoading(false));
-  }, [showTables]);
+      .then(({ data }) => {
+        if (!cancelled && Array.isArray(data)) {
+          setTables(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTables([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTables(false);
+      });
 
-  function handleLogout() {
-    logout();
-    toast.info("You have been signed out.");
-    navigate("/login", { replace: true });
-  }
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
-  // When a recent chat is clicked — restore the full conversation in chat window with live table
+  // When a recent chat item is clicked — restore the question + answer into chat
   async function handleRecentChatClick(item) {
     const initialMessages = [
       {
@@ -97,15 +91,16 @@ export default function Sidebar({ onNewChat }) {
         answerText: item.answer_text || "",
         sql: item.sql_query || "",
         sqlExplanation: item.sql_explanation || "",
-        chart: item.chart_type && item.chart_type !== "none"
-          ? { type: item.chart_type }
-          : null,
-        columns: [],
-        rows: [],
+        chart: item.chart || (item.chart_type && item.chart_type !== "none" ? { type: item.chart_type } : null),
+        columns: item.columns || [],
+        rows: item.rows || [],
         timestamp: item.created_at,
       },
     ];
 
+    // Clear auto query and active chat
+    localStorage.removeItem("sqlense_auto_query");
+    localStorage.removeItem("sqlense_pending_query");
     localStorage.setItem("sqlense_restore_chat", JSON.stringify(initialMessages));
     window.dispatchEvent(new CustomEvent("sqlense:restore_chat", { detail: initialMessages }));
     navigate(`/chat?chat_id=${item.id}`, { state: { restoreMessages: initialMessages, timestamp: Date.now() } });
@@ -141,18 +136,22 @@ export default function Sidebar({ onNewChat }) {
     } catch {}
   }
 
-  // When a database table is clicked — auto-query it in chat
+  // When a database table is clicked — query it in chat
   function handleTableClick(tableName) {
     const question = `Show all records from ${tableName} (first 100 rows)`;
-    const autoQuery = { pendingQuestion: question };
-    localStorage.setItem("sqlense_auto_query", JSON.stringify(autoQuery));
     localStorage.removeItem("sqlense_active_chat");
     localStorage.removeItem("sqlense_restore_chat");
-    window.dispatchEvent(new CustomEvent("sqlense:auto_query", { detail: question }));
-    navigate(`/chat?table=${encodeURIComponent(tableName)}&t=${Date.now()}`, { state: { tableQuery: question, timestamp: Date.now() } });
+    localStorage.removeItem("sqlense_auto_query");
+    localStorage.removeItem("sqlense_pending_query");
+    navigate(`/chat`, { state: { tableQuery: question } });
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("sqlense:auto_query", { detail: question }));
+    }, 50);
   }
 
   function handleChatNavClick() {
+    localStorage.removeItem("sqlense_auto_query");
+    localStorage.removeItem("sqlense_pending_query");
     window.dispatchEvent(new CustomEvent("sqlense:active_chat"));
   }
 
@@ -160,11 +159,12 @@ export default function Sidebar({ onNewChat }) {
     localStorage.removeItem("sqlense_restore_chat");
     localStorage.removeItem("sqlense_auto_query");
     localStorage.removeItem("sqlense_pending_query");
+    sessionStorage.removeItem("sqlense_active_chat");
     window.dispatchEvent(new CustomEvent("sqlense:new_chat"));
     if (onNewChat) {
       onNewChat();
     }
-    navigate(`/chat?new=${Date.now()}`);
+    navigate(`/chat`);
   }
 
   const navClass = ({ isActive }) =>
@@ -188,242 +188,204 @@ export default function Sidebar({ onNewChat }) {
   }
 
   // Truncate title to fit sidebar width
-  function truncate(str, n = 28) {
-    return str && str.length > n ? str.slice(0, n) + "…" : str;
+  function truncate(str, max = 22) {
+    if (!str) return "Query";
+    return str.length > max ? str.slice(0, max) + "…" : str;
   }
 
   return (
-    <div className="sidebar">
-      {/* Logo */}
-      <h2 className="logo">
-        SQLense
-      </h2>
-
-      {/* New Chat button */}
-      <button
-        className="new-chat-btn"
-        onClick={handleNewChat}
-        id="sidebar-new-chat-btn"
-      >
-        <Plus size={16} /> New Chat
-      </button>
-
-      {/* Main navigation */}
-      <div className="nav-section">
-        <NavLink to="/dashboard" className={navClass} id="nav-dashboard">
-          <LayoutDashboard size={17} />
-          <span>Dashboard</span>
-        </NavLink>
-
-        <NavLink to="/chat" className={navClass} id="nav-chat" onClick={handleChatNavClick}>
-          <MessageSquare size={17} />
-          <span>Chat</span>
-        </NavLink>
-
-        <NavLink to="/history" className={navClass} id="nav-history">
-          <History size={17} />
-          <span>Query History</span>
-        </NavLink>
-
-        <NavLink to="/saved-charts" className={navClass} id="nav-saved-charts">
-          <BarChart2 size={17} />
-          <span>Saved Charts</span>
-        </NavLink>
-
-        <NavLink to={isAdmin ? "/admin/kpi-dashboard" : "/kpi-dashboard"} className={navClass} id="nav-kpi-dashboard">
-          <Star size={17} />
-          <span>KPI Dashboard</span>
+    <aside className="sidebar">
+      {/* Brand */}
+      <div className="sidebar-brand">
+        <NavLink to="/dashboard" className="brand-logo" id="sidebar-brand-link">
+          <span className="brand-name">SQLense</span>
         </NavLink>
       </div>
 
-      {/* Recent Chats — real data from history API */}
-      <div className="nav-section">
+      {/* New Chat Button */}
+      <div className="sidebar-new-chat">
         <button
-          className="sidebar-section-toggle"
-          onClick={() => setShowChats((v) => !v)}
-          aria-expanded={showChats}
-          id="toggle-recent-chats"
+          className="btn btn-primary new-chat-btn"
+          onClick={handleNewChat}
+          id="new-chat-btn"
         >
-          <span className="nav-section-label">Recent Chats</span>
-          {showChats ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          <Plus size={16} />
+          <span>New Chat</span>
         </button>
-        {showChats && (
-          <div className="recent-chats-list">
-            {chatsLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}>
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-              </div>
-            ) : recentChats.length === 0 ? (
-              <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-muted)", opacity: 0.7 }}>
-                No chats yet
-              </div>
-            ) : (
-              recentChats.map((chat) => (
-                <button
-                  key={chat.id}
-                  className="recent-chat-item"
-                  onClick={() => handleRecentChatClick(chat)}
-                  title={chat.question}
-                  id={`recent-chat-${chat.id}`}
-                >
-                  <MessageSquare size={12} className="recent-chat-icon" />
-                  <span className="recent-chat-title">{truncate(chat.question)}</span>
-                  <span className="recent-chat-time">{timeAgo(chat.created_at)}</span>
-                </button>
-              ))
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Database Tables — real tables from org's connected DB */}
-      <div className="nav-section">
-        <button
-          className="sidebar-section-toggle"
-          onClick={() => setShowTables((v) => !v)}
-          aria-expanded={showTables}
-          id="toggle-db-tables"
-        >
-          <span className="nav-section-label">Database Tables</span>
-          {showTables ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </button>
-        {showTables && (
-          <div className="db-tables-list">
-            {tablesLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}>
-                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-              </div>
-            ) : dbTables.length === 0 ? (
-              <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-muted)", opacity: 0.7 }}>
-                No tables found
-              </div>
-            ) : (
-              dbTables.map((table) => (
-                <button
-                  key={table.name}
-                  className="db-table-item"
-                  id={`db-table-${table.name}`}
-                  onClick={() => handleTableClick(table.name)}
-                  title={`Click to query ${table.name}`}
-                  style={{ cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", padding: 0 }}
-                >
-                  <span className="db-table-icon">🗄️</span>
-                  <div className="db-table-info">
-                    <span className="db-table-name">{table.name}</span>
-                    <span className="db-table-rows">{table.rows.toLocaleString()} rows</span>
-                  </div>
-                  <Table2 size={11} className="db-table-schema-icon" />
-                </button>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Admin-only section */}
-      {isAdmin && (
+      {/* Navigation Links */}
+      <nav className="sidebar-nav">
         <div className="nav-section">
-          <div className="nav-section-label">Admin</div>
-
-          <NavLink to="/admin/dashboard" className={navClass} id="nav-admin-dashboard">
-            <Shield size={17} />
-            <span>Admin Dashboard</span>
+          <NavLink to="/dashboard" className={navClass} id="nav-dashboard">
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
           </NavLink>
 
-          <NavLink to="/admin/database" className={navClass} id="nav-admin-database">
-            <Database size={17} />
-            <span>Database</span>
+          <NavLink to="/chat" className={navClass} onClick={handleChatNavClick} id="nav-chat">
+            <MessageSquare size={18} />
+            <span>Chat</span>
           </NavLink>
 
-          <NavLink to="/admin/workspace" className={navClass} id="nav-admin-workspace">
-            <Terminal size={17} />
-            <span>SQL Workspace</span>
+          <NavLink to="/history" className={navClass} id="nav-history">
+            <History size={18} />
+            <span>Query History</span>
           </NavLink>
 
-          <NavLink to="/admin/employees" className={navClass} id="nav-admin-employees"
-            style={{ position: "relative" }}>
-            <Users size={17} />
-            <span>Employees</span>
-            {pendingCount > 0 && (
-              <span style={{
-                marginLeft: "auto",
-                background: "#ef4444", color: "#fff",
-                fontSize: 10, fontWeight: 800,
-                borderRadius: 50, padding: "1px 6px",
-                lineHeight: "16px",
-              }}>{pendingCount}</span>
-            )}
+          <NavLink to="/saved-charts" className={navClass} id="nav-saved-charts">
+            <Bookmark size={18} />
+            <span>Saved Charts</span>
           </NavLink>
 
-          <NavLink to="/admin/analytics" className={navClass} id="nav-admin-analytics">
-            <TrendingUp size={17} />
-            <span>Analytics</span>
-          </NavLink>
-
-          <NavLink to="/admin/audit-log" className={navClass} id="nav-admin-audit">
-            <FileText size={17} />
-            <span>Audit Log</span>
+          <NavLink to="/admin/kpi-dashboard" className={navClass} id="nav-kpi-dashboard">
+            <Sparkles size={18} />
+            <span>KPI Dashboard</span>
           </NavLink>
         </div>
-      )}
 
-      {/* Profile section */}
-      <div className="bottom-section" ref={profileRef}>
-        {/* Profile popup */}
-        {showMenu && (
-          <div className="profile-popup">
-            <NavLink
-              to="/profile"
-              className="popup-item"
-              onClick={() => setShowMenu(false)}
-              id="popup-profile"
-            >
-              <User size={16} />
-              <span>Profile</span>
-            </NavLink>
-            <NavLink
-              to="/settings"
-              className="popup-item"
-              onClick={() => setShowMenu(false)}
-              id="popup-settings"
-            >
-              <Settings size={16} />
-              <span>Settings</span>
-            </NavLink>
-            <div className="popup-divider" />
-            <div className="popup-item logout" onClick={handleLogout} id="popup-logout">
-              <LogOut size={16} />
-              <span>Sign out</span>
+        {/* Recent Chats Section */}
+        <div className="sidebar-collapsible-section">
+          <button
+            className="section-header-btn"
+            onClick={() => setChatsOpen((v) => !v)}
+            id="toggle-recent-chats-btn"
+          >
+            <span className="section-label">RECENT CHATS</span>
+            <ChevronDown
+              size={14}
+              className={`chevron ${chatsOpen ? "open" : ""}`}
+            />
+          </button>
+
+          {chatsOpen && (
+            <div className="recent-chats-list">
+              {loadingChats ? (
+                <div className="sidebar-subtext">Loading…</div>
+              ) : recentChats.length === 0 ? (
+                <div className="sidebar-subtext">No chats yet</div>
+              ) : (
+                recentChats.map((c) => (
+                  <button
+                    key={c.id}
+                    className="recent-chat-item"
+                    onClick={() => handleRecentChatClick(c)}
+                    title={c.question}
+                    id={`recent-chat-${c.id}`}
+                  >
+                    <MessageSquare size={13} className="item-icon" />
+                    <span className="item-title">{truncate(c.question)}</span>
+                    <span className="item-time">{timeAgo(c.created_at)}</span>
+                  </button>
+                ))
+              )}
             </div>
+          )}
+        </div>
+
+        {/* Database Tables Section */}
+        <div className="sidebar-collapsible-section">
+          <button
+            className="section-header-btn"
+            onClick={() => setTablesOpen((v) => !v)}
+            id="toggle-db-tables-btn"
+          >
+            <span className="section-label">DATABASE TABLES</span>
+            <ChevronDown
+              size={14}
+              className={`chevron ${tablesOpen ? "open" : ""}`}
+            />
+          </button>
+
+          {tablesOpen && (
+            <div className="db-tables-list">
+              {loadingTables ? (
+                <div className="sidebar-subtext">Loading tables…</div>
+              ) : tables.length === 0 ? (
+                <div className="sidebar-subtext">No tables found</div>
+              ) : (
+                tables.map((tbl) => (
+                  <button
+                    key={tbl.name}
+                    className="db-table-item"
+                    onClick={() => handleTableClick(tbl.name)}
+                    title={`Click to query ${tbl.name}`}
+                    id={`db-table-${tbl.name}`}
+                  >
+                    <Database size={13} className="item-icon" />
+                    <span className="item-name">{tbl.name}</span>
+                    {tbl.rows !== undefined && (
+                      <span className="item-rows">{tbl.rows} rows</span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Admin Navigation */}
+        {user?.role === "admin" && (
+          <div className="nav-section admin-section">
+            <span className="section-label">ADMIN</span>
+
+            <NavLink to="/admin/dashboard" className={navClass} id="nav-admin-dashboard">
+              <Shield size={18} />
+              <span>Admin Dashboard</span>
+            </NavLink>
+
+            <NavLink to="/admin/database" className={navClass} id="nav-admin-database">
+              <Database size={18} />
+              <span>Database</span>
+            </NavLink>
+
+            <NavLink to="/admin/workspace" className={navClass} id="nav-admin-workspace">
+              <Code2 size={18} />
+              <span>SQL Workspace</span>
+            </NavLink>
+
+            <NavLink to="/admin/employees" className={navClass} id="nav-admin-employees">
+              <Users size={18} />
+              <span>Employees</span>
+              {user?.pending_count > 0 && (
+                <span className="badge pending-badge">{user.pending_count}</span>
+              )}
+            </NavLink>
+
+            <NavLink to="/admin/analytics" className={navClass} id="nav-admin-analytics">
+              <LayoutDashboard size={18} />
+              <span>Analytics</span>
+            </NavLink>
+
+            <NavLink to="/admin/audit-log" className={navClass} id="nav-admin-audit-log">
+              <FileText size={18} />
+              <span>Audit Log</span>
+            </NavLink>
           </div>
         )}
+      </nav>
 
-        {/* Profile button */}
-        <div
-          className="profile"
-          onClick={() => setShowMenu((v) => !v)}
-          role="button"
-          tabIndex={0}
-          aria-label="Profile menu"
-          id="sidebar-profile-btn"
-          onKeyDown={(e) => e.key === "Enter" && setShowMenu((v) => !v)}
-        >
-          <div className="profile-icon" aria-hidden="true">
-            {user?.name
-              ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-              : user?.email ? user.email.slice(0, 2).toUpperCase() : "U"}
-          </div>
-          <div className="profile-info" style={{ overflow: "hidden" }}>
-            <h4 style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-              {user?.name || user?.email || "User"}
-            </h4>
-            <p style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-              {user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : "User"}
+      {/* User Footer Card */}
+      <div className="sidebar-footer">
+        <NavLink to="/profile" className="user-profile-card" id="sidebar-profile-link">
+          <div className="user-avatar">{initials}</div>
+          <div className="user-details">
+            <span className="user-name">{user?.name || "User"}</span>
+            <span className="user-subtext">
+              {user?.role === "admin" ? "Admin" : "Employee"}
               {user?.organization_name ? ` · ${user.organization_name}` : ""}
-            </p>
+            </span>
           </div>
-        </div>
+        </NavLink>
+        <button
+          className="logout-btn"
+          onClick={logout}
+          title="Sign out"
+          aria-label="Sign out"
+          id="sidebar-logout-btn"
+        >
+          <LogOut size={16} />
+        </button>
       </div>
-    </div>
+    </aside>
   );
 }

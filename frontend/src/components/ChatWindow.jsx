@@ -1,13 +1,13 @@
 /**
  * ChatWindow — fully functional chat interface.
  * - Controlled textarea with Enter-to-send (Shift+Enter for newline)
- * - Chat state persisted to localStorage (survives navigation)
- * - Pending queries are re-fired if user navigates away mid-response
+ * - Clean session-managed message history (never automatically fires ghost queries on mount)
  * - Real mode: POST /api/chat integration with loading state
  * - Auto-scroll to latest message
  * - Welcome screen with example prompts
  */
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { Send, Sparkles } from "lucide-react";
 import Message       from "./Message";
 import LoadingBubble from "./LoadingBubble";
@@ -16,25 +16,29 @@ import { useToast } from "../context/ToastContext";
 import { getMockAIResponse, SUGGESTED_PROMPTS } from "../data/mockData";
 
 const MOCK_MODE = import.meta.env.VITE_MOCK_AUTH === "true";
-const PENDING_KEY = "sqlense_pending_query";
-const AUTO_QUERY_KEY = "sqlense_auto_query";
+
+// Purge any legacy lingering auto/pending keys immediately
+try {
+  localStorage.removeItem("sqlense_pending_query");
+  localStorage.removeItem("sqlense_auto_query");
+} catch {}
 
 export default function ChatWindow({ messages, setMessages }) {
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
   const { toast }   = useToast();
+  const location    = useLocation();
   const bottomRef   = useRef(null);
   const textareaRef = useRef(null);
 
   // ── Query Execution ──────────────────────────────────────────────────────────
   const fireQuery = useCallback(async (q) => {
+    if (!q || !q.trim()) return;
     setLoading(true);
-    localStorage.setItem(PENDING_KEY, q);
 
     if (MOCK_MODE) {
       await new Promise((r) => setTimeout(r, 1200));
       setMessages((prev) => [...prev, getMockAIResponse(q)]);
-      localStorage.removeItem(PENDING_KEY);
       setLoading(false);
       return;
     }
@@ -62,7 +66,6 @@ export default function ChatWindow({ messages, setMessages }) {
         { role: "bot", isError: true, text: msg },
       ]);
     } finally {
-      localStorage.removeItem(PENDING_KEY);
       setLoading(false);
     }
   }, [setMessages]);
@@ -96,18 +99,7 @@ export default function ChatWindow({ messages, setMessages }) {
     ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
   }, [input]);
 
-  // On mount: if there's a pending query (user navigated away mid-response), re-fire it
-  useEffect(() => {
-    const pending = localStorage.getItem(PENDING_KEY);
-    if (pending && !loading) {
-      localStorage.removeItem(PENDING_KEY);
-      // Small delay to let component fully mount
-      setTimeout(() => fireQuery(pending), 300);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // On mount or event: if sidebar table was clicked, auto-fire the query
+  // Handle explicit real-time sidebar table click event (ONLY when actively clicked)
   useEffect(() => {
     function handleAutoQuery(e) {
       const q = typeof e.detail === "string" ? e.detail : e.detail?.pendingQuestion;
@@ -119,32 +111,11 @@ export default function ChatWindow({ messages, setMessages }) {
           timestamp: new Date().toISOString(),
         };
         setMessages([userMsg]);
-        setTimeout(() => fireQuery(q), 300);
+        setTimeout(() => fireQuery(q), 50);
       }
     }
 
     window.addEventListener("sqlense:auto_query", handleAutoQuery);
-
-    const autoQuery = localStorage.getItem(AUTO_QUERY_KEY);
-    if (autoQuery) {
-      try {
-        const { pendingQuestion } = JSON.parse(autoQuery);
-        if (pendingQuestion) {
-          localStorage.removeItem(AUTO_QUERY_KEY);
-          const userMsg = {
-            id: "auto-user-" + Date.now(),
-            role: "user",
-            text: pendingQuestion,
-            timestamp: new Date().toISOString(),
-          };
-          setMessages([userMsg]);
-          setTimeout(() => fireQuery(pendingQuestion), 400);
-        }
-      } catch {
-        localStorage.removeItem(AUTO_QUERY_KEY);
-      }
-    }
-
     return () => window.removeEventListener("sqlense:auto_query", handleAutoQuery);
   }, [fireQuery, setMessages]);
 

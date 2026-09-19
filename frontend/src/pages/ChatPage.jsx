@@ -15,11 +15,12 @@ import { historyAPI } from "../services/api";
 
 const ACTIVE_KEY  = "sqlense_active_chat";
 const RESTORE_KEY = "sqlense_restore_chat";
-const AUTO_KEY    = "sqlense_auto_query";
 
-// Purge any old stale localStorage active chat from previous persistent runs
+// Purge any stale localStorage active chat or pending query from legacy runs
 try {
   localStorage.removeItem(ACTIVE_KEY);
+  localStorage.removeItem("sqlense_auto_query");
+  localStorage.removeItem("sqlense_pending_query");
 } catch {}
 
 export default function ChatPage() {
@@ -35,7 +36,7 @@ export default function ChatPage() {
         return location.state.restoreMessages;
       }
       const restoreRaw = localStorage.getItem(RESTORE_KEY);
-      if (restoreRaw && (location.search.includes("chat_id") || location.state?.restoreMessages)) {
+      if (restoreRaw && location.search.includes("chat_id")) {
         isHistoricalRef.current = true;
         localStorage.removeItem(RESTORE_KEY);
         return JSON.parse(restoreRaw);
@@ -54,7 +55,6 @@ export default function ChatPage() {
   // Track if current view is a historical recent chat
   const isHistorical = Boolean(
     location.search.includes("chat_id") ||
-    location.search.includes("table") ||
     location.state?.restoreMessages
   );
   isHistoricalRef.current = isHistorical;
@@ -76,6 +76,7 @@ export default function ChatPage() {
     if (location.state?.restoreMessages) {
       isHistoricalRef.current = true;
       setMessages(location.state.restoreMessages);
+      return;
     }
 
     // 2. If recent chat requested via URL parameter ?chat_id=...
@@ -114,8 +115,8 @@ export default function ChatPage() {
       return;
     }
 
-    // 3. If navigated back to main /chat (no chat_id / table in search query)
-    if (!location.search || (!location.search.includes("chat_id") && !location.search.includes("table"))) {
+    // 3. If navigated back to main /chat (no chat_id in search query)
+    if (!location.search || !location.search.includes("chat_id")) {
       isHistoricalRef.current = false;
       const activeRaw = sessionStorage.getItem(ACTIVE_KEY);
       if (activeRaw) {
@@ -158,7 +159,8 @@ export default function ChatPage() {
       sessionStorage.removeItem(ACTIVE_KEY);
       localStorage.removeItem(ACTIVE_KEY);
       localStorage.removeItem(RESTORE_KEY);
-      localStorage.removeItem(AUTO_KEY);
+      localStorage.removeItem("sqlense_auto_query");
+      localStorage.removeItem("sqlense_pending_query");
       setMessages([]);
     }
 
@@ -178,7 +180,7 @@ export default function ChatPage() {
     sessionStorage.removeItem(ACTIVE_KEY);
     localStorage.removeItem(ACTIVE_KEY);
     localStorage.removeItem(RESTORE_KEY);
-    localStorage.removeItem(AUTO_KEY);
+    localStorage.removeItem("sqlense_auto_query");
     localStorage.removeItem("sqlense_pending_query");
     setMessages([]);
     navigate("/chat");
