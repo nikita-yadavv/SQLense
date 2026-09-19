@@ -3,7 +3,7 @@
  * Handles user messages, rich bot responses, high-contrast SQL view, and friendly error cards.
  */
 import { useState } from "react";
-import { BarChart2, Bookmark, Check, Eye, EyeOff, AlertCircle, Database, Settings, Terminal, Copy } from "lucide-react";
+import { BarChart2, Bookmark, Check, Eye, EyeOff, AlertCircle, Database, Settings, Terminal, Copy, Lock, ShieldAlert } from "lucide-react";
 import ChartRenderer from "./ChartRenderer";
 import ResultTable   from "./ResultTable";
 import { savedChartsAPI, getErrorMessage } from "../services/api";
@@ -36,11 +36,13 @@ function parseFriendlyError(rawMsg) {
     msg.includes("only pure select") ||
     msg.includes("write operation") ||
     msg.includes("only select queries are allowed") ||
-    msg.includes("dml/ddl not allowed")
+    msg.includes("dml/ddl not allowed") ||
+    msg.includes("modifications are not permitted") ||
+    msg.includes("blocked_write_operation")
   ) {
     return {
-      title: "Query Not Allowed",
-      hint: "For security, only read queries (SELECT) are permitted. Try rephrasing your question.",
+      title: "Operation Restricted to SQL Workspace",
+      hint: "Data modifications (UPDATE, INSERT, DELETE, DROP, ALTER) are disabled in AI Chat to safeguard database integrity. Please use the SQL Workspace in the Admin menu for transaction-controlled operations.",
       icon: "🔒",
     };
   }
@@ -172,6 +174,10 @@ export default function Message({
     );
   }
 
+  // Check if this response is a write-operation restriction notice
+  const isWriteRestricted = (answerText || text || "").toLowerCase().includes("data modifications are not permitted in ai chat") ||
+    (answerText || text || "").toLowerCase().includes("modifications are not permitted in ai chat");
+
   // ── Normal bot message ──────────────────────────────────────────────────────
   const hasChart = chart && chart.type && chart.type !== "none" && chart.type !== "table" && chart.data?.length > 0;
 
@@ -199,13 +205,54 @@ export default function Message({
   return (
     <div className="message-wrapper bot">
       <div className="bot-message">
-        {/* Business insight / answer text */}
-        {(answerText || text) && (
-          <p className="answer-text">🤖 {answerText || text}</p>
+        {/* Write / CRUD Restriction Notice */}
+        {isWriteRestricted ? (
+          <div style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 14,
+            padding: "16px 20px",
+            background: "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.03) 100%)",
+            border: "1px solid rgba(245,158,11,0.25)",
+            borderRadius: 12,
+            marginBottom: sql ? 12 : 0,
+          }}>
+            <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>🔒</span>
+            <div>
+              <p style={{
+                fontWeight: 600,
+                fontSize: 14,
+                color: "var(--text-primary)",
+                margin: "0 0 6px 0",
+              }}>
+                Operation Restricted to SQL Workspace
+              </p>
+              <p style={{
+                fontSize: 13,
+                color: "var(--text-primary)",
+                margin: "0 0 8px 0",
+                lineHeight: 1.5,
+              }}>
+                AI Chat is strictly restricted to <strong>read-only analytical queries (SELECT)</strong> to safeguard database integrity.
+              </p>
+              <p style={{
+                fontSize: 12,
+                color: "var(--text-muted)",
+                margin: 0,
+                lineHeight: 1.5,
+              }}>
+                💡 To perform <strong>UPDATE</strong>, <strong>INSERT</strong>, <strong>DELETE</strong>, or schema changes with transaction controls (Preview, Commit, Rollback), please use the <strong>SQL Workspace</strong> in the Admin panel.
+              </p>
+            </div>
+          </div>
+        ) : (
+          (answerText || text) && (
+            <p className="answer-text">🤖 {answerText || text}</p>
+          )
         )}
 
         {/* SQL Explanation */}
-        {sqlExplanation && (
+        {!isWriteRestricted && sqlExplanation && (
           <div className="sql-explanation">
             💡 {sqlExplanation}
           </div>

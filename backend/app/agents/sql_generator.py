@@ -10,6 +10,7 @@ import re
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
 from app.config import get_settings
+from app.agents.write_intent import is_write_intent
 
 settings = get_settings()
 
@@ -37,7 +38,7 @@ RULES:
    - Use `EXTRACT(YEAR FROM col)` / `EXTRACT(MONTH FROM col)` for date parts.
    - Use `COALESCE(val, default)` instead of MySQL `IFNULL()`.
 7. Limit results to 500 rows unless requested otherwise.
-8. NEVER use INSERT, UPDATE, DELETE, DROP, or any DML/DDL.
+8. NEVER use INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, or any DML/DDL. If the user request asks to modify, update, delete, insert, or drop data, output ONLY: BLOCKED_WRITE_OPERATION.
 
 DATABASE SCHEMA:
 {schema}
@@ -119,18 +120,28 @@ def normalize_pg_sql(sql: str) -> str:
 
 
 def generate_sql(question: str, schema_str: str) -> str:
-    """Call the LLM and return the raw SQL SELECT string."""
+    """Call the LLM and return the raw SQL SELECT string, or BLOCKED_WRITE_OPERATION if user requests a mutation."""
+    if is_write_intent(question):
+        return "BLOCKED_WRITE_OPERATION"
+
     chain = _SQL_PROMPT | _llm
     result = chain.invoke({"schema": schema_str, "question": question})
     sql = result.strip()
     for fence in ["```sql", "```SQL", "```", "`"]:
         sql = sql.replace(fence, "")
     sql = sql.strip()
+
+    first_word = sql.split()[0].upper() if sql.split() else ""
+    if first_word in {"UPDATE", "INSERT", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE", "BLOCKED_WRITE_OPERATION"}:
+        return "BLOCKED_WRITE_OPERATION"
+
     return normalize_pg_sql(sql)
 
 
 def explain_sql(sql: str, question: str) -> str:
     """Ask the LLM to explain the SQL in plain English."""
+    if sql == "BLOCKED_WRITE_OPERATION" or not sql:
+        return "Data modification operations (UPDATE, INSERT, DELETE, DDL) are restricted to the SQL Workspace."
     chain = _EXPLAIN_PROMPT | _llm
     return chain.invoke({"sql": sql, "question": question}).strip()
 
